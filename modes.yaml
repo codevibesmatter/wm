@@ -189,6 +189,17 @@ modes:
       ok_to_ask:
         - "Genuinely ambiguous request"
 
+  stop-hook-test:
+    name: "Stop Hook Test"
+    description: "Eval-only mode that exercises each stop condition in sequence"
+    stop_conditions:
+      - tasks_complete
+      - committed
+      - pushed
+    template: "stop-hook-test.md"
+    workflow_prefix: "SH"
+    category: system
+
   onboard:
     name: "Onboard"
     description: "Configure kata for a new project via guided interview"

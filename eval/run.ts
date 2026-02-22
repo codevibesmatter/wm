@@ -36,16 +36,17 @@ import { liveResearchScenario } from './scenarios/live-research.js'
 import { taskDisciplineScenario } from './scenarios/task-discipline.js'
 import { liveTaskDisciplineScenario } from './scenarios/live-task-discipline.js'
 import { stopHookEnforcementScenario } from './scenarios/stop-hook-enforcement.js'
+import { stopHookTestScenario } from './scenarios/stop-hook-test.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const TRANSCRIPT_DIR = resolve(__dirname, '../eval-transcripts')
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
-const scenarios = [askUserPauseScenario, modeEntryScenario, onboardScenario, taskModeScenario, taskDisciplineScenario, stopHookEnforcementScenario, planningModeScenario, planningAuthScenario, implAuthScenario, researchModeScenario, liveHookVerifyScenario, liveTaskScenario, liveResearchScenario, liveTaskDisciplineScenario]
+const scenarios = [askUserPauseScenario, modeEntryScenario, onboardScenario, taskModeScenario, taskDisciplineScenario, stopHookEnforcementScenario, stopHookTestScenario, planningModeScenario, planningAuthScenario, implAuthScenario, researchModeScenario, liveHookVerifyScenario, liveTaskScenario, liveResearchScenario, liveTaskDisciplineScenario]
 
 /** Scenarios that require --project (no built-in fixture) */
-const LIVE_SCENARIO_IDS = new Set(['live-hook-verify', 'live-task', 'live-research', 'live-task-discipline'])
+const LIVE_SCENARIO_IDS = new Set(['live-hook-verify', 'live-task', 'live-research', 'live-task-discipline', 'stop-hook-test'])
 
 // ─── CLI ──────────────────────────────────────────────────────────────────────
 
