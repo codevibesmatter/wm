@@ -34,13 +34,25 @@ phases:
       - "Build + typecheck pass"
 ---
 
-# Generalized Interview System for Planning Mode
+# Generalized Interview System
 
 > GitHub Issue: [#16](https://github.com/codevibesmatter/kata-wm/issues/16)
 
 ## Overview
 
-The planning template currently jumps from codebase research (P0) straight to spec writing (P1) with no structured user interview. This produces specs based on agent assumptions rather than user requirements. This feature adds a composable, data-driven interview system that the planning template uses to gather requirements, edge cases, architecture decisions, and testing strategy from the user before writing specs. Interview categories are defined in a YAML file that ships with batteries and can be customized per-project.
+The planning template currently jumps from codebase research (P0) straight to spec writing (P1) with no structured user interview. This produces specs based on agent assumptions rather than user requirements. This feature adds a composable, data-driven interview system that **any mode template** can use to gather structured input from the user. Interview categories are defined in a YAML file (`batteries/interviews.yaml`) that ships with batteries and can be customized per-project.
+
+**Pluggable by design:** The interview categories are a reusable question library. Any mode template can include interview steps by adding a phase with steps that reference categories. Planning mode uses the full set; other modes pick what they need:
+
+| Mode | Interview usage |
+|------|----------------|
+| **planning** | Full set: requirements, architecture, testing, design |
+| **task** | None initially (stays question-free) |
+| **debug** | Could add: reproduction steps, environment details |
+| **implementation** | Could add: clarify ambiguous spec sections mid-impl |
+| **research** | Could add: scope and direction before deep dive |
+
+The initial implementation wires interviews into planning mode. Other modes can adopt interview steps later by adding `steps` that reference categories — no code changes needed, just template edits.
 
 ## Feature Behaviors
 
@@ -301,7 +313,7 @@ N/A
 
 - **No new phase type in schema** — interview phases are regular phases with steps. No `type: "interview"` field needed.
 - **No gate hook** — the approval step is a regular task in the dependency chain, not a PreToolUse hook.
-- **No changes to task mode** — task mode stays question-free.
+- **No changes to task mode initially** — task mode stays question-free. Other modes can adopt interview steps later via template edits.
 - **No runtime interview config loading during task creation** — the planning template contains baked-in AskUserQuestion calls. The YAML data source is for authoring/customizing the template, not for runtime generation.
 - **No ASCII mockup generation** — the old baseplane template had iterative mockup rounds. That's project-specific and can be added as a custom category by projects that need it.
 - **No spec-writer agent spawn** — the current planning template writes specs directly. Restoring the orchestrator pattern is a separate concern.
