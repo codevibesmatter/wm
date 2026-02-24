@@ -761,6 +761,144 @@ export function assertStopHookEventuallyAllowed(): EvalCheckpoint {
   }
 }
 
+// ─── Hook Log Assertions ────────────────────────────────────────────────────
+
+interface HookLogEntry {
+  ts: string
+  hook: string
+  decision: string
+  [key: string]: unknown
+}
+
+/**
+ * Read the unified hook log for a session.
+ * Hooks write to {sessionsDir}/{sessionId}/hooks.log.jsonl
+ */
+function readHookLog(ctx: EvalContext): HookLogEntry[] {
+  for (const base of ['.kata/sessions', '.claude/sessions']) {
+    if (!ctx.sessionId) return []
+    const logPath = `${base}/${ctx.sessionId}/hooks.log.jsonl`
+    if (ctx.fileExists(logPath)) {
+      const content = ctx.readFile(logPath)
+      return content
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => {
+          try {
+            return JSON.parse(line) as HookLogEntry
+          } catch {
+            return null
+          }
+        })
+        .filter((e): e is HookLogEntry => e !== null)
+    }
+  }
+  return []
+}
+
+/**
+ * Assert that a specific hook fired at least once.
+ * Checks hooks.log.jsonl for entries matching the hook name.
+ */
+export function assertHookFired(hookName: string): EvalCheckpoint {
+  return {
+    name: `hook fired: ${hookName}`,
+    assert(ctx: EvalContext) {
+      const entries = readHookLog(ctx)
+      if (entries.length === 0) {
+        return fail('No hook log entries found — hooks.log.jsonl missing or empty')
+      }
+      const matches = entries.filter((e) => e.hook === hookName)
+      if (matches.length === 0) {
+        const seen = [...new Set(entries.map((e) => e.hook))].join(', ')
+        return fail(`Hook '${hookName}' never fired. Hooks seen: ${seen}`)
+      }
+      return pass()
+    },
+  }
+}
+
+/**
+ * Assert that a specific hook made a specific decision at least once.
+ */
+export function assertHookDecision(hookName: string, decision: string): EvalCheckpoint {
+  return {
+    name: `hook ${hookName}: decision=${decision}`,
+    assert(ctx: EvalContext) {
+      const entries = readHookLog(ctx)
+      const matches = entries.filter((e) => e.hook === hookName && e.decision === decision)
+      if (matches.length === 0) {
+        const hookEntries = entries.filter((e) => e.hook === hookName)
+        if (hookEntries.length === 0) {
+          return fail(`Hook '${hookName}' never fired`)
+        }
+        const decisions = hookEntries.map((e) => e.decision).join(', ')
+        return fail(`Hook '${hookName}' never decided '${decision}'. Decisions seen: ${decisions}`)
+      }
+      return pass()
+    },
+  }
+}
+
+/**
+ * Assert that the mode-gate hook denied at least one tool call.
+ * Checks hooks.log.jsonl for mode-gate entries with decision=deny.
+ */
+export function assertModeGateBlocked(): EvalCheckpoint {
+  return {
+    name: 'mode-gate: blocked at least one edit without mode',
+    assert(ctx: EvalContext) {
+      const entries = readHookLog(ctx)
+      const denials = entries.filter((e) => e.hook === 'mode-gate' && e.decision === 'deny')
+      if (denials.length > 0) return pass()
+
+      // Fallback: check transcript for the denial message (pre-logging compat)
+      if (ctx.transcriptPath) {
+        try {
+          const content = readFileSync(ctx.transcriptPath, 'utf-8')
+          if (
+            content.includes('Enter a mode first') ||
+            content.includes('Write operations are blocked until a mode is active')
+          ) {
+            return pass()
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      return fail(
+        'No mode-gate denial found. Agent may have entered a mode before attempting edits.',
+      )
+    },
+  }
+}
+
+/**
+ * Assert that the transcript contains a string pattern.
+ * Useful for verifying hook outputs, system messages, or tool results.
+ */
+export function assertTranscriptContains(pattern: string, label?: string): EvalCheckpoint {
+  return {
+    name: label ?? `transcript contains: ${pattern.slice(0, 60)}`,
+    assert(ctx: EvalContext) {
+      if (!ctx.transcriptPath) {
+        return fail('No transcriptPath — cannot check transcript')
+      }
+      let content: string
+      try {
+        content = readFileSync(ctx.transcriptPath, 'utf-8')
+      } catch {
+        return fail(`Cannot read transcript: ${ctx.transcriptPath}`)
+      }
+      if (!content.includes(pattern)) {
+        return fail(`Pattern not found in transcript: "${pattern.slice(0, 80)}"`)
+      }
+      return pass()
+    },
+  }
+}
+
 // ─── Presets ──────────────────────────────────────────────────────────────────
 
 /**

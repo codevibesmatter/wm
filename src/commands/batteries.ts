@@ -3,6 +3,13 @@
 // Use --user to seed user-level config at ~/.config/kata/ instead of project.
 import { scaffoldBatteries, scaffoldUserBatteries } from './scaffold-batteries.js'
 import { findProjectDir, getUserConfigDir } from '../session/lookup.js'
+import {
+  resolveWmBin,
+  buildHookEntries,
+  readSettings,
+  writeSettings,
+  mergeHooksIntoSettings,
+} from './setup.js'
 
 /**
  * kata batteries [--update] [--user] [--cwd=PATH]
@@ -57,7 +64,24 @@ export async function batteries(args: string[]): Promise<void> {
     result.githubTemplates.length
   const updatedCount = result.updated.length
 
-  if (newCount === 0 && updatedCount === 0 && result.skipped.length > 0) {
+  // On --update, also refresh hook registrations in .claude/settings.json
+  // so new hook events from package upgrades are picked up automatically.
+  let hooksRefreshed = false
+  if (update) {
+    const settings = readSettings(projectRoot)
+    if (settings.hooks) {
+      // Detect strict mode from existing settings: if task-deps hook is registered, keep strict
+      const strict = Object.values(settings.hooks)
+        .flat()
+        .some((entry) => entry.hooks?.some((h) => /\bhook task-deps\b/.test(h.command ?? '')))
+      const wmBin = resolveWmBin()
+      const wmHooks = buildHookEntries(strict, wmBin)
+      writeSettings(projectRoot, mergeHooksIntoSettings(settings, wmHooks))
+      hooksRefreshed = true
+    }
+  }
+
+  if (newCount === 0 && updatedCount === 0 && !hooksRefreshed && result.skipped.length > 0) {
     process.stdout.write('kata batteries: all files already present (nothing to copy)\n')
     process.stdout.write(`  Re-run with --update to overwrite with latest versions\n`)
     return
@@ -92,6 +116,9 @@ export async function batteries(args: string[]): Promise<void> {
   if (result.updated.length > 0) {
     process.stdout.write(`\nUpdated (overwritten):\n`)
     for (const f of result.updated) process.stdout.write(`  ${f}\n`)
+  }
+  if (hooksRefreshed) {
+    process.stdout.write(`\nHooks refreshed → .claude/settings.json\n`)
   }
   if (result.skipped.length > 0) {
     process.stdout.write(`\nSkipped (already exist): ${result.skipped.join(', ')}\n`)

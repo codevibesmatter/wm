@@ -131,9 +131,11 @@ async function handleSessionStart(input: Record<string, unknown>): Promise<void>
   const sessionId = input.session_id as string | undefined
 
   // Import and run init (silently capture its output)
-  // Always force-reset on SessionStart so /clear doesn't carry over stale mode state
+  // No --force: session_id handles lifecycle naturally.
+  // New session or /clear → new session_id → fresh state created.
+  // Compact or resume → same session_id → existing state preserved.
   const { init } = await import('./init.js')
-  const initArgs: string[] = ['--force']
+  const initArgs: string[] = []
   if (sessionId) initArgs.push(`--session=${sessionId}`)
   await captureConsoleLog(() => init(initArgs))
 
@@ -142,6 +144,11 @@ async function handleSessionStart(input: Record<string, unknown>): Promise<void>
   const primeArgs: string[] = []
   if (sessionId) primeArgs.push(`--session=${sessionId}`)
   const additionalContext = await captureConsoleLog(() => prime(primeArgs))
+
+  if (sessionId) {
+    const source = (input.source as string) ?? 'unknown'
+    logHook(sessionId, { hook: 'session-start', decision: 'context', source })
+  }
 
   outputJson({
     hookSpecificOutput: {
@@ -160,7 +167,8 @@ async function handleUserPrompt(input: Record<string, unknown>): Promise<void> {
 
   // If a mode is already active, just remind the LLM of the current mode
   // and how to switch. No keyword detection needed — the LLM handles intent.
-  const session = await getSessionState(input.session_id as string | undefined)
+  const sessionId = input.session_id as string | undefined
+  const session = await getSessionState(sessionId)
   if (session) {
     const activeMode = session.state.currentMode || session.state.sessionType || 'default'
     if (activeMode !== 'default') {
@@ -169,6 +177,7 @@ async function handleUserPrompt(input: Record<string, unknown>): Promise<void> {
       const availableModes = Object.keys(modesConfig.modes)
         .filter((id) => !modesConfig.modes[id].deprecated)
         .join(', ')
+      if (sessionId) logHook(sessionId, { hook: 'user-prompt', decision: 'context', active_mode: activeMode })
       outputJson({
         hookSpecificOutput: {
           hookEventName: 'UserPromptSubmit',
@@ -186,6 +195,7 @@ async function handleUserPrompt(input: Record<string, unknown>): Promise<void> {
   const suggestOutput = await captureConsoleLog(() => suggest(message.split(' ')))
 
   let additionalContext = ''
+  let suggestedMode: string | null = null
   try {
     const result = JSON.parse(suggestOutput) as {
       mode: string | null
@@ -195,9 +205,12 @@ async function handleUserPrompt(input: Record<string, unknown>): Promise<void> {
     if (result.guidance) {
       additionalContext = result.guidance
     }
+    suggestedMode = result.mode
   } catch {
     // Could not parse suggest output
   }
+
+  if (sessionId) logHook(sessionId, { hook: 'user-prompt', decision: 'context', suggested_mode: suggestedMode })
 
   outputJson({
     hookSpecificOutput: {
@@ -225,6 +238,7 @@ async function handleModeGate(input: Record<string, unknown>): Promise<void> {
     if (state.currentMode === 'default' || !state.currentMode) {
       const writeTools = ['Edit', 'MultiEdit', 'Write', 'NotebookEdit']
       if (writeTools.includes(toolName)) {
+        if (sessionId) logHook(sessionId, { hook: 'mode-gate', decision: 'deny', tool: toolName })
         outputJson({
           hookSpecificOutput: {
             hookEventName: 'PreToolUse',
@@ -267,7 +281,8 @@ async function handleModeGate(input: Record<string, unknown>): Promise<void> {
     }
   }
 
-  // Default: allow (no JSON output needed, but be explicit)
+  // Default: allow
+  if (sessionId) logHook(sessionId, { hook: 'mode-gate', decision: 'allow', tool: toolName })
   outputJson({
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
@@ -319,6 +334,7 @@ async function handleTaskDeps(input: Record<string, unknown>): Promise<void> {
           return dep ? `[${dep.id}] ${dep.subject}` : depId
         })
         .join(', ')
+      if (input.session_id) logHook(input.session_id as string, { hook: 'task-deps', decision: 'deny', task: taskId, blocked_by: incomplete })
       outputJson({
         hookSpecificOutput: {
           hookEventName: 'PreToolUse',
@@ -332,6 +348,7 @@ async function handleTaskDeps(input: Record<string, unknown>): Promise<void> {
     // On any error, allow — don't block on infra failures
   }
 
+  if (input.session_id) logHook(input.session_id as string, { hook: 'task-deps', decision: 'allow', task: taskId })
   outputJson({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' } })
 }
 
@@ -369,6 +386,7 @@ async function handleTaskEvidence(_input: Record<string, unknown>): Promise<void
     // Git unavailable — no advisory needed
   }
 
+  if (_input.session_id) logHook(_input.session_id as string, { hook: 'task-evidence', decision: 'allow', uncommitted: !!additionalContext })
   outputJson({
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
@@ -379,10 +397,36 @@ async function handleTaskEvidence(_input: Record<string, unknown>): Promise<void
 }
 
 /**
- * Append a structured log entry to the session's stop-hook log.
- * Written to {sessionsDir}/{sessionId}/stop-hook.log.jsonl
- * so eval assertions can verify the stop hook fired and blocked.
+ * Structured hook log entry. All hooks write to a single
+ * {sessionsDir}/{sessionId}/hooks.log.jsonl file.
  */
+interface HookLogEntry {
+  ts: string
+  hook: string
+  decision: 'allow' | 'block' | 'deny' | 'context'
+  /** Extra data: reasons, tool_name, note, etc. */
+  [key: string]: unknown
+}
+
+/**
+ * Append a structured log entry to the session's hook log.
+ * Written to {sessionsDir}/{sessionId}/hooks.log.jsonl
+ * so eval assertions can verify which hooks fired and what they decided.
+ */
+function logHook(sessionId: string, entry: Omit<HookLogEntry, 'ts'>): void {
+  try {
+    const projectDir = findProjectDir()
+    const sessionsDir = getSessionsDir(projectDir)
+    const sessionDir = join(sessionsDir, sessionId)
+    mkdirSync(sessionDir, { recursive: true })
+    const full: HookLogEntry = { ts: new Date().toISOString(), ...entry }
+    appendFileSync(join(sessionDir, 'hooks.log.jsonl'), `${JSON.stringify(full)}\n`)
+  } catch {
+    // Best-effort logging — never fail the hook
+  }
+}
+
+/** Backwards-compat: also write stop-hook.log.jsonl for existing assertions */
 function logStopHook(
   sessionId: string,
   decision: 'block' | 'allow',
@@ -427,6 +471,7 @@ async function handleStopConditions(input: Record<string, unknown>): Promise<voi
 
   // No stop conditions for this mode = allow exit
   if (stopConditions.length === 0) {
+    logHook(sessionId, { hook: 'stop-conditions', decision: 'allow', note: 'no stop conditions for mode' })
     logStopHook(sessionId, 'allow', [], 'no stop conditions for mode')
     return
   }
@@ -454,6 +499,7 @@ async function handleStopConditions(input: Record<string, unknown>): Promise<voi
       if (result.guidance?.escapeHatch) {
         parts.push(result.guidance.escapeHatch)
       }
+      logHook(sessionId, { hook: 'stop-conditions', decision: 'block', reasons: result.reasons })
       logStopHook(sessionId, 'block', result.reasons)
       // decision: "block" must be at the TOP LEVEL (not inside hookSpecificOutput)
       outputJson({
@@ -461,10 +507,12 @@ async function handleStopConditions(input: Record<string, unknown>): Promise<voi
         reason: parts.join('\n'),
       })
     } else {
+      logHook(sessionId, { hook: 'stop-conditions', decision: 'allow', note: 'all conditions met' })
       logStopHook(sessionId, 'allow', [], 'all conditions met')
     }
     // canExit === true: output nothing (allows stop)
   } catch {
+    logHook(sessionId, { hook: 'stop-conditions', decision: 'allow', note: 'parse error' })
     logStopHook(sessionId, 'allow', [], 'parse error — defaulting to allow')
     // Could not parse exit output — allow stop
   }

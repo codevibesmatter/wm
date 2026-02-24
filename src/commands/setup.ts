@@ -16,7 +16,7 @@ import { getPackageRoot, findProjectDir, getKataDir, getSessionsDir, getProjectT
  * upgrade (e.g. /usr/local/bin/kata). Falls back to the package-relative path for
  * workspace / pnpm-link scenarios where `kata` is not yet in PATH.
  */
-function resolveWmBin(): string {
+export function resolveWmBin(): string {
   try {
     const which = execSync('which kata 2>/dev/null || command -v kata 2>/dev/null', {
       encoding: 'utf-8',
@@ -69,7 +69,7 @@ function parseArgs(args: string[]): {
 /**
  * Settings.json hook entry structure
  */
-interface HookEntry {
+export interface HookEntry {
   matcher?: string
   hooks: Array<{
     type: string
@@ -81,7 +81,7 @@ interface HookEntry {
 /**
  * Settings.json structure
  */
-interface SettingsJson {
+export interface SettingsJson {
   hooks?: Record<string, HookEntry[]>
   [key: string]: unknown
 }
@@ -93,7 +93,7 @@ interface SettingsJson {
  * Default: SessionStart, UserPromptSubmit, Stop, PreToolUse (mode-gate)
  * With --strict: also PreToolUse task-deps + task-evidence hooks
  */
-function buildHookEntries(strict: boolean, wmBin: string): Record<string, HookEntry[]> {
+export function buildHookEntries(strict: boolean, wmBin: string): Record<string, HookEntry[]> {
   // Quote the binary path so spaces in the path are handled correctly
   const bin = `"${wmBin}"`
   const hooks: Record<string, HookEntry[]> = {
@@ -175,7 +175,7 @@ function buildHookEntries(strict: boolean, wmBin: string): Record<string, HookEn
  * Read existing .claude/settings.json or return empty structure
  * Uses cwd-based path since .claude/sessions/ may not exist yet
  */
-function readSettings(cwd: string): SettingsJson {
+export function readSettings(cwd: string): SettingsJson {
   const settingsPath = join(cwd, '.claude', 'settings.json')
   if (existsSync(settingsPath)) {
     try {
@@ -191,7 +191,7 @@ function readSettings(cwd: string): SettingsJson {
 /**
  * Write .claude/settings.json
  */
-function writeSettings(cwd: string, settings: SettingsJson): void {
+export function writeSettings(cwd: string, settings: SettingsJson): void {
   const claudeDir = join(cwd, '.claude')
   mkdirSync(claudeDir, { recursive: true })
   const settingsPath = join(claudeDir, 'settings.json')
@@ -202,7 +202,7 @@ function writeSettings(cwd: string, settings: SettingsJson): void {
  * Merge kata hook entries into existing settings
  * Preserves non-kata hooks, replaces kata hooks
  */
-function mergeHooksIntoSettings(
+export function mergeHooksIntoSettings(
   settings: SettingsJson,
   wmHooks: Record<string, HookEntry[]>,
 ): SettingsJson {
