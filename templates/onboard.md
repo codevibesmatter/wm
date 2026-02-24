@@ -48,6 +48,7 @@ phases:
       - "AskUserQuestion: Research files path? (default: planning/research)"
       - "AskUserQuestion: Session retention days? (default: 7)"
       - "AskUserQuestion: Install strict mode hooks (PreToolUse gates)? (default: no)"
+      - "AskUserQuestion: Customize planning interview categories? (see ## Interview Customization below)"
   - id: p4
     name: "GitHub Setup"
     description: "Verify gh CLI is installed and authenticated"
@@ -101,6 +102,7 @@ You are the agent running the kata setup interview. Ask questions, collect answe
 - `.claude/workflows/templates/` — 6 full mode templates with GitHub integration
 - `.claude/agents/` — 5 Claude Code sub-agent definitions
 - `planning/spec-templates/` — Feature, epic, and bug spec templates
+- `.kata/interviews.yaml` — Planning interview categories (customizable)
 
 ## Batteries-Included Starter Content
 
@@ -232,6 +234,41 @@ AskUserQuestion(questions=[{
 **If Quick:** skip p2 and p3. Just confirm the project name, then proceed to p4 (GitHub Setup). Use all defaults. Set batteries = true.
 
 **If Custom:** continue through p2 (Project Discovery) and p3 (Custom Configuration). At the end of p3, ask the batteries question to decide whether to install starter content.
+
+## Interview Customization
+
+In p3 (custom path only), ask about planning interview categories:
+
+```
+AskUserQuestion(questions=[{
+  question: "Which interview categories should planning mode use for this project?",
+  header: "Categories",
+  options: [
+    {label: "Requirements", description: "User journey, happy path, scope, edge cases, scale"},
+    {label: "Architecture", description: "Integration points, error handling, performance"},
+    {label: "Testing", description: "Test scenarios, error paths, test types"}
+  ],
+  multiSelect: true
+}])
+```
+
+Then ask about UI design separately:
+
+```
+AskUserQuestion(questions=[{
+  question: "Does this project have a UI? (enables design interview category)",
+  header: "UI Design",
+  options: [
+    {label: "Yes — include design interviews", description: "Layout, components, visual states"},
+    {label: "No — backend only", description: "Skip design category entirely"}
+  ],
+  multiSelect: false
+}])
+```
+
+**If all defaults kept:** No action needed — `batteries/interviews.yaml` has all 4 categories.
+
+**If user deselected categories:** Write a custom `.kata/interviews.yaml` (or `.claude/workflows/interviews.yaml` for old layout) containing only the selected categories. Copy the selected category definitions from the batteries file.
 
 ## Write Configuration Command
 
