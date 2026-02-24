@@ -899,6 +899,80 @@ export function assertTranscriptContains(pattern: string, label?: string): EvalC
   }
 }
 
+// ─── Interview Assertions ─────────────────────────────────────────────────────
+
+/**
+ * Known interview category headers from batteries/interviews.yaml.
+ * Used to verify that captured questions look like real interview rounds.
+ */
+const INTERVIEW_HEADERS = new Set([
+  // P0: scope clarification
+  'Feature', 'Issue', 'Approve',
+  // P1: interview categories from batteries/interviews.yaml
+  'Problem', 'Happy Path', 'Scope OUT', 'Empty State', 'Scale', 'Concurrency',
+  'Integration', 'Errors', 'Performance',
+  'Error Paths', 'Test Types',
+  'Reference', 'Layout', 'Components',
+])
+
+/**
+ * Assert that .eval/pending-question.json contains an interview-like AskUserQuestion.
+ * Checks:
+ * - File exists and is valid JSON
+ * - Has a sessionId
+ * - Has at least 1 question with header, question text, and 2+ options
+ * - At least one header matches a known interview category
+ */
+export function assertInterviewQuestionCaptured(): EvalCheckpoint {
+  return {
+    name: 'interview AskUserQuestion captured',
+    assert(ctx: EvalContext) {
+      if (!ctx.fileExists('.eval/pending-question.json')) {
+        return fail('No .eval/pending-question.json — AskUserQuestion was not intercepted')
+      }
+
+      let data: Record<string, unknown>
+      try {
+        data = JSON.parse(ctx.readFile('.eval/pending-question.json'))
+      } catch {
+        return fail('.eval/pending-question.json is not valid JSON')
+      }
+
+      if (!data.sessionId) {
+        return fail('pending-question.json has no sessionId')
+      }
+
+      const questions = data.questions as Array<Record<string, unknown>> | undefined
+      if (!questions || questions.length === 0) {
+        return fail('pending-question.json has no questions')
+      }
+
+      // Validate structure: each question needs header, question, options (2+)
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i]
+        if (!q.header || !q.question) {
+          return fail(`Question ${i} missing header or question text`)
+        }
+        const opts = q.options as Array<unknown> | undefined
+        if (!opts || opts.length < 2) {
+          return fail(`Question ${i} has < 2 options (got ${opts?.length ?? 0})`)
+        }
+      }
+
+      // At least one header should match a known interview category
+      const headers = questions.map((q) => String(q.header))
+      const matched = headers.some((h) => INTERVIEW_HEADERS.has(h))
+      if (!matched) {
+        return fail(
+          `No question header matches interview categories. Headers seen: ${headers.join(', ')}`,
+        )
+      }
+
+      return pass()
+    },
+  }
+}
+
 // ─── Presets ──────────────────────────────────────────────────────────────────
 
 /**
