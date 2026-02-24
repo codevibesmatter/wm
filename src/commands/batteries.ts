@@ -61,7 +61,8 @@ export async function batteries(args: string[]): Promise<void> {
     result.templates.length +
     result.agents.length +
     result.specTemplates.length +
-    result.githubTemplates.length
+    result.githubTemplates.length +
+    result.interviews.length
   const updatedCount = result.updated.length
 
   // On --update, also refresh hook registrations in .claude/settings.json
@@ -112,6 +113,12 @@ export async function batteries(args: string[]): Promise<void> {
     process.stdout.write(`\nGitHub → .github/\n`)
     for (const f of result.githubTemplates) process.stdout.write(`  ${f}\n`)
     process.stdout.write(`\nNext: run 'kata enter onboard' to create labels on GitHub\n`)
+  }
+  if (result.interviews.length > 0) {
+    const { getKataDir } = await import('../session/lookup.js')
+    const kd = getKataDir(projectRoot)
+    const intDir = kd === '.kata' ? '.kata' : '.claude/workflows'
+    process.stdout.write(`\nInterview config → ${intDir}/interviews.yaml\n`)
   }
   if (result.updated.length > 0) {
     process.stdout.write(`\nUpdated (overwritten):\n`)
