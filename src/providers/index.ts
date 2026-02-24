@@ -8,6 +8,8 @@ export type { PreparedPrompt } from './prompt.js'
 export { claudeProvider } from './claude.js'
 export { geminiProvider } from './gemini.js'
 export { codexProvider } from './codex.js'
+export { runAgentStep, extractScore } from './step-runner.js'
+export type { StepContext, StepRunResult } from './step-runner.js'
 
 import type { AgentProvider } from './types.js'
 import { claudeProvider } from './claude.js'

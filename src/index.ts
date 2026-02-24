@@ -29,6 +29,7 @@ import { config as configCommand } from './commands/config.js'
 import { modes } from './commands/modes.js'
 import { verifyPhase } from './commands/verify-phase.js'
 import { providers as providersCommand } from './commands/providers.js'
+import { review as reviewCommand } from './commands/review.js'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getPackageRoot } from './session/lookup.js'
@@ -155,6 +156,10 @@ async function main() {
         await providersCommand(commandArgs)
         break
 
+      case 'review':
+        await reviewCommand(commandArgs)
+        break
+
       case 'hook':
         await hook(commandArgs)
         break
@@ -215,6 +220,8 @@ Usage:
   kata batteries [--update] [--cwd=PATH] [--user] Scaffold batteries-included starter content
   kata config [--show]                            Show resolved config with provenance
   kata providers [list|setup] [--json]             Check/configure agent providers
+  kata review --prompt=<name> [--provider=P]       Run ad-hoc agent review
+  kata review --list                               List available prompt templates
   kata teardown [--yes] [--all] [--dry-run]      Remove kata from a project
   kata hook <name>                               Dispatch hook event (for settings.json)
   kata --version                                 Show version
@@ -315,6 +322,9 @@ export {
   claudeProvider,
   geminiProvider,
   codexProvider,
+  runAgentStep,
+  extractScore,
 } from './providers/index.js'
 export type { AgentProvider, AgentRunOptions } from './providers/types.js'
 export type { PreparedPrompt } from './providers/prompt.js'
+export type { StepContext, StepRunResult } from './providers/step-runner.js'
