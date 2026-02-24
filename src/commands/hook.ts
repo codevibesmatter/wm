@@ -127,7 +127,7 @@ async function captureConsoleLog(fn: () => Promise<void>): Promise<string> {
 
 // ── Handler: session-start ──
 // Calls init then prime — initializes session state and outputs context
-async function handleSessionStart(input: Record<string, unknown>): Promise<void> {
+export async function handleSessionStart(input: Record<string, unknown>): Promise<void> {
   const sessionId = input.session_id as string | undefined
 
   // Import and run init (silently capture its output)
@@ -162,7 +162,7 @@ async function handleSessionStart(input: Record<string, unknown>): Promise<void>
 // Detects mode from user message. When a mode is already active, emits a
 // lightweight hint instead of running full keyword-based suggest — the LLM
 // understands natural language mode-switch requests on its own.
-async function handleUserPrompt(input: Record<string, unknown>): Promise<void> {
+export async function handleUserPrompt(input: Record<string, unknown>): Promise<void> {
   const message = (input.user_message as string) ?? (input.prompt as string) ?? ''
 
   // If a mode is already active, just remind the LLM of the current mode
@@ -223,7 +223,7 @@ async function handleUserPrompt(input: Record<string, unknown>): Promise<void> {
 // ── Handler: mode-gate ──
 // Checks mode state for PreToolUse gating, and injects KATA_SESSION_ID
 // into kata bash commands so they can resolve the session ID.
-async function handleModeGate(input: Record<string, unknown>): Promise<void> {
+export async function handleModeGate(input: Record<string, unknown>): Promise<void> {
   const sessionId = input.session_id as string | undefined
   const toolName = (input.tool_name as string) ?? ''
   const toolInput = (input.tool_input as Record<string, unknown>) ?? {}
@@ -294,7 +294,7 @@ async function handleModeGate(input: Record<string, unknown>): Promise<void> {
 // ── Handler: task-deps ──
 // Checks task dependencies before allowing TaskUpdate to mark a task completed.
 // Blocks completion if any blockedBy tasks are not yet completed.
-async function handleTaskDeps(input: Record<string, unknown>): Promise<void> {
+export async function handleTaskDeps(input: Record<string, unknown>): Promise<void> {
   // Task fields arrive inside tool_input for PreToolUse hooks
   const toolInput = (input.tool_input as Record<string, unknown>) ?? {}
   const taskId = (toolInput.taskId as string) ?? ''
@@ -355,7 +355,7 @@ async function handleTaskDeps(input: Record<string, unknown>): Promise<void> {
 // ── Handler: task-evidence ──
 // Warns (via additionalContext) when completing a task with no committed changes.
 // Always ALLOWs — evidence check is advisory, not blocking.
-async function handleTaskEvidence(_input: Record<string, unknown>): Promise<void> {
+export async function handleTaskEvidence(_input: Record<string, unknown>): Promise<void> {
   let additionalContext = ''
 
   try {
@@ -413,7 +413,7 @@ interface HookLogEntry {
  * Written to {sessionsDir}/{sessionId}/hooks.log.jsonl
  * so eval assertions can verify which hooks fired and what they decided.
  */
-function logHook(sessionId: string, entry: Omit<HookLogEntry, 'ts'>): void {
+export function logHook(sessionId: string, entry: Omit<HookLogEntry, 'ts'>): void {
   try {
     const projectDir = findProjectDir()
     const sessionsDir = getSessionsDir(projectDir)
@@ -452,7 +452,7 @@ function logStopHook(
 
 // ── Handler: stop-conditions ──
 // Calls canExit to check if session can be stopped
-async function handleStopConditions(input: Record<string, unknown>): Promise<void> {
+export async function handleStopConditions(input: Record<string, unknown>): Promise<void> {
   const session = await getSessionState(input.session_id as string | undefined)
 
   if (!session) {
