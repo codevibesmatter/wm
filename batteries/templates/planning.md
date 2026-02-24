@@ -1,7 +1,7 @@
 ---
 id: planning
 name: "Planning Mode"
-description: "Feature planning with research, spec writing, GitHub issue, and review"
+description: "Feature planning with research, interviews, spec writing, and review"
 mode: planning
 phases:
   - id: p0
@@ -64,11 +64,246 @@ phases:
           Then: Mark this task completed via TaskUpdate
 
   - id: p1
+    name: Interview
+    task_config:
+      title: "P1: Interview - gather requirements, architecture, testing, and design from user"
+      labels: [phase, phase-1, interview]
+      depends_on: [p0]
+    steps:
+      - id: requirements
+        title: "Interview: Requirements"
+        instruction: |
+          Gather requirements from the user. Run two AskUserQuestion rounds:
+
+          **Round 1: Problem, happy path, scope**
+
+          AskUserQuestion(questions=[
+            {
+              question: "What user problem does this solve?",
+              header: "Problem",
+              options: [
+                {label: "User workflow gap", description: "Missing capability in existing flow"},
+                {label: "Performance issue", description: "Current approach too slow/unreliable"},
+                {label: "New capability", description: "Something users can't do at all today"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "What does the ideal success flow look like?",
+              header: "Happy Path",
+              options: [
+                {label: "I'll describe it", description: "Free-form description"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "What are you explicitly NOT building?",
+              header: "Scope OUT",
+              options: [
+                {label: "I'll list exclusions", description: "Free-form list"}
+              ],
+              multiSelect: false
+            }
+          ])
+
+          **Round 2: Edge cases — empty state, scale, concurrency**
+
+          AskUserQuestion(questions=[
+            {
+              question: "What happens with zero results or first-time use?",
+              header: "Empty State",
+              options: [
+                {label: "Show placeholder", description: "Empty state with guidance"},
+                {label: "Hide section", description: "Don't show until data exists"},
+                {label: "N/A", description: "Not applicable to this feature"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "Expected data volume? (affects pagination, caching, indexing)",
+              header: "Scale",
+              options: [
+                {label: "Small (<100)", description: "No pagination needed"},
+                {label: "Medium (100-10K)", description: "Basic pagination"},
+                {label: "Large (10K+)", description: "Virtual scroll, server-side pagination, indexing"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "What if multiple users edit simultaneously?",
+              header: "Concurrency",
+              options: [
+                {label: "Last write wins", description: "Simple, no conflict detection"},
+                {label: "Optimistic locking", description: "Detect conflicts, prompt user"},
+                {label: "N/A", description: "Single-user or read-only feature"}
+              ],
+              multiSelect: false
+            }
+          ])
+
+          Document all answers with rationale.
+          Then: Mark this task completed via TaskUpdate
+
+      - id: architecture
+        title: "Interview: Architecture"
+        instruction: |
+          Gather architecture decisions from the user:
+
+          AskUserQuestion(questions=[
+            {
+              question: "What existing systems or APIs does this touch?",
+              header: "Integration",
+              options: [
+                {label: "I'll list them", description: "Free-form list of integration points"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "How should errors surface to users?",
+              header: "Errors",
+              options: [
+                {label: "Inline messages", description: "Error text near the action that failed"},
+                {label: "Toast/notification", description: "Temporary popup notification"},
+                {label: "Error page", description: "Full error state with recovery action"},
+                {label: "Silent retry", description: "Auto-retry with fallback"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "Any latency or throughput requirements?",
+              header: "Performance",
+              options: [
+                {label: "Standard", description: "No special requirements (<2s page loads)"},
+                {label: "Fast", description: "Sub-second response required (autocomplete, search)"},
+                {label: "Background OK", description: "Can process async (jobs, queues)"}
+              ],
+              multiSelect: false
+            }
+          ])
+
+          Document all answers with rationale.
+          Then: Mark this task completed via TaskUpdate
+
+      - id: testing
+        title: "Interview: Testing Strategy"
+        instruction: |
+          Gather testing strategy from the user:
+
+          AskUserQuestion(questions=[
+            {
+              question: "What scenarios verify the feature works correctly?",
+              header: "Happy Path",
+              options: [
+                {label: "CRUD operations", description: "Create, read, update, delete flows"},
+                {label: "User journey", description: "End-to-end workflow completion"},
+                {label: "API responses", description: "Correct data returned for valid inputs"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "What should fail gracefully?",
+              header: "Error Paths",
+              options: [
+                {label: "Validation errors", description: "Invalid input handling"},
+                {label: "Permission denied", description: "Unauthorized access attempts"},
+                {label: "Network failures", description: "Timeout and retry behavior"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "What kinds of tests should we write?",
+              header: "Test Types",
+              options: [
+                {label: "Unit tests", description: "Isolated function/component tests"},
+                {label: "Integration tests", description: "Cross-module or API tests"},
+                {label: "E2E tests", description: "Full user flow tests"}
+              ],
+              multiSelect: false
+            }
+          ])
+
+          Document all answers — these become the Test Plan section in the spec.
+          Then: Mark this task completed via TaskUpdate
+
+      - id: design
+        title: "Interview: UI Design (skip if backend-only)"
+        instruction: |
+          **Skip this step entirely if the feature is backend-only (no UI changes).**
+          Mark completed and move on.
+
+          For features with UI, gather design decisions:
+
+          AskUserQuestion(questions=[
+            {
+              question: "Which existing page or screen is most similar to what you're building?",
+              header: "Reference",
+              options: [
+                {label: "I'll name it", description: "Reference an existing page/screen"},
+                {label: "Nothing similar", description: "This is a new pattern"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "What layout pattern fits this feature?",
+              header: "Layout",
+              options: [
+                {label: "List/table", description: "Data listing with sorting/filtering"},
+                {label: "Detail view", description: "Single-item view with sections"},
+                {label: "Form", description: "Input form with validation"},
+                {label: "Dashboard", description: "Multiple cards/panels overview"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "Which existing components can you reuse?",
+              header: "Components",
+              options: [
+                {label: "I'll list them", description: "Free-form list of reusable components"},
+                {label: "All new", description: "No existing components apply"}
+              ],
+              multiSelect: false
+            }
+          ])
+
+          Document all answers.
+          Then: Mark this task completed via TaskUpdate
+
+      - id: requirements-approval
+        title: "Requirements approval"
+        instruction: |
+          Compile all interview answers into a structured requirements summary:
+
+          ## Requirements Summary
+          **Problem:** [from requirements interview]
+          **Happy Path:** [from requirements interview]
+          **Scope OUT:** [exclusions]
+          **Edge Cases:** [empty state, scale, concurrency decisions]
+          **Architecture:** [integration points, error handling, performance]
+          **Testing Strategy:** [happy path, error paths, test types]
+          **UI Design:** [reference page, layout, components] or "Backend-only"
+
+          Present this summary to the user:
+
+          AskUserQuestion(questions=[{
+            question: "Do these requirements look correct? Review the summary above.",
+            header: "Approve",
+            options: [
+              {label: "Approved", description: "Requirements are correct, proceed to spec writing"},
+              {label: "Revise", description: "I need to change something — tell me what"}
+            ],
+            multiSelect: false
+          }])
+
+          If "Revise": ask what to change, update the summary, re-present.
+          If "Approved": proceed to spec writing.
+          Then: Mark this task completed via TaskUpdate
+
+  - id: p2
     name: Spec Writing
     task_config:
-      title: "P1: Spec - write feature specification from template"
-      labels: [phase, phase-1, spec]
-      depends_on: [p0]
+      title: "P2: Spec - write feature specification from template"
+      labels: [phase, phase-2, spec]
+      depends_on: [p1]
     steps:
       - id: create-spec-file
         title: "Create spec file from template"
@@ -101,7 +336,8 @@ phases:
       - id: write-behaviors
         title: "Write feature behaviors and acceptance criteria"
         instruction: |
-          Write the spec body following this structure:
+          Write the spec body following this structure.
+          Use the interview answers from P1 as your primary input.
 
           ## Overview
           1-3 sentences: what problem this solves, for whom, and why now.
@@ -124,12 +360,14 @@ phases:
 
           ## Non-Goals
           Explicit list of what this feature does NOT do.
+          (Use the "Scope OUT" answers from the requirements interview.)
 
           ## Implementation Phases
           Break into 2-5 phases (p1, p2...) with concrete tasks per phase.
           Phases go in the YAML frontmatter `phases:` array.
           For each phase, add `test_cases:` with 1-3 entries specifying what to test
           and whether it's a unit, integration, or smoke test.
+          (Use the testing strategy interview answers to inform test_cases.)
 
           Then: Mark this task completed via TaskUpdate
 
@@ -185,12 +423,12 @@ phases:
 
           Then: Mark this task completed via TaskUpdate
 
-  - id: p2
+  - id: p3
     name: Review
     task_config:
-      title: "P2: Review - check completeness and correctness"
-      labels: [phase, phase-2, review]
-      depends_on: [p1]
+      title: "P3: Review - check completeness and correctness"
+      labels: [phase, phase-3, review]
+      depends_on: [p2]
     steps:
       - id: completeness-check
         title: "Check spec completeness"
@@ -220,7 +458,7 @@ phases:
 
           Spawn a review agent to give a second opinion:
 
-          Task(subagent_type="spec-writer", prompt="
+          Task(subagent_type="general-purpose", prompt="
             Review this spec for completeness and correctness:
             Read: planning/specs/{spec-file}.md
 
@@ -236,12 +474,12 @@ phases:
           Address any issues raised.
           Then: Mark this task completed via TaskUpdate
 
-  - id: p3
+  - id: p4
     name: Finalize
     task_config:
-      title: "P3: Finalize - approve spec, commit, push"
-      labels: [phase, phase-3, finalize]
-      depends_on: [p2]
+      title: "P4: Finalize - approve spec, commit, push"
+      labels: [phase, phase-4, finalize]
+      depends_on: [p3]
     steps:
       - id: approve-spec
         title: "Mark spec approved and commit"
@@ -268,7 +506,7 @@ phases:
           ```bash
           gh issue comment {N} --body "Spec approved: planning/specs/{spec-file}.md
 
-          Ready for implementation: \`wm enter implementation\`"
+          Ready for implementation: \`kata enter implementation\`"
           ```
 
           Then: Mark this task completed via TaskUpdate
@@ -280,7 +518,7 @@ global_conditions:
 
 # Planning Mode
 
-You are in **planning** mode. Create a feature spec through research, writing, and review.
+You are in **planning** mode. Create a feature spec through research, interviews, writing, and review.
 
 ## Phase Flow
 
@@ -289,21 +527,40 @@ P0: Research
     ├── Clarify scope + GitHub issue
     └── Codebase research (Explore agent)
 
-P1: Spec Writing
+P1: Interview
+    ├── Requirements (problem, happy path, scope, edge cases)
+    ├── Architecture (integration, errors, performance)
+    ├── Testing Strategy (happy path, error paths, test types)
+    ├── UI Design (skip if backend-only)
+    └── Requirements Approval (compile summary, user sign-off)
+
+P2: Spec Writing
     ├── Create spec file from template
-    ├── Write behaviors + acceptance criteria
+    ├── Write behaviors + acceptance criteria (informed by interviews)
     ├── Extract code patterns + implementation hints
     └── Link GitHub issue
 
-P2: Review
+P3: Review
     ├── Completeness checklist
     └── Spec review agent
 
-P3: Finalize
+P4: Finalize
     ├── Mark approved
     ├── Commit + push
     └── Comment on GitHub issue
 ```
+
+## Interview Categories
+
+The interview phase uses categories from `batteries/interviews.yaml`.
+Projects can customize questions by editing `.kata/interviews.yaml`.
+
+| Category | What it covers |
+|----------|---------------|
+| Requirements | Problem statement, happy path, scope boundaries, edge cases (empty state, scale, concurrency) |
+| Architecture | Integration points, error handling, performance requirements |
+| Testing | Happy path scenarios, error paths, test types |
+| Design | Reference pages, layout patterns, reusable components (skipped for backend-only) |
 
 ## Stop Conditions
 
