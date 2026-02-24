@@ -38,6 +38,8 @@ export interface StepContext {
   transcriptPath?: string
   /** Pre-cleaned environment for provider subprocess */
   env?: Record<string, string>
+  /** Pre-assembled markdown sections appended after named context sources */
+  extraContext?: string
 }
 
 export interface StepRunResult {
@@ -189,10 +191,13 @@ export async function runAgentStep(
   // 2. Load prompt template
   const promptTemplate = loadPrompt(config.prompt)
 
-  // 3. Assemble context from named sources
-  const assembledContext = config.context?.length
+  // 3. Assemble context from named sources + extra context
+  const namedContext = config.context?.length
     ? assembleContext(config.context, context)
     : ''
+  const assembledContext = [namedContext, context.extraContext]
+    .filter(Boolean)
+    .join('\n\n---\n\n')
 
   // 4. Build final prompt
   const fullPrompt = assembledContext
