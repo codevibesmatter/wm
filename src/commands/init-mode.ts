@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import jsYaml from 'js-yaml'
 import { findProjectDir } from '../session/lookup.js'
+import { VALID_CATEGORIES } from '../state/schema.js'
 
 interface InitModeOptions {
   name: string
@@ -13,8 +14,6 @@ interface InitModeOptions {
   keywords?: string[]
   aliases?: string[]
 }
-
-const VALID_CATEGORIES = ['planning', 'implementation', 'investigation', 'management', 'special']
 
 /**
  * Generate template content for a new mode
@@ -242,7 +241,7 @@ export async function initModeCommand(args: string[]): Promise<void> {
   }
 
   // Validate category
-  if (parsed.category && !VALID_CATEGORIES.includes(parsed.category)) {
+  if (parsed.category && !(VALID_CATEGORIES as readonly string[]).includes(parsed.category)) {
     // biome-ignore lint/suspicious/noConsole: CLI output
     console.error(`Error: Invalid category: ${parsed.category}`)
     // biome-ignore lint/suspicious/noConsole: CLI output

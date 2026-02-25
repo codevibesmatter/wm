@@ -3,6 +3,7 @@ import { resolve, basename, join } from 'node:path'
 import jsYaml from 'js-yaml'
 import { findProjectDir, getProjectModesPath, getProjectTemplatesDir } from '../session/lookup.js'
 import { validatePhases } from '../validation/index.js'
+import { VALID_CATEGORIES } from '../state/schema.js'
 
 interface RegisterModeOptions {
   templatePath: string
@@ -13,8 +14,6 @@ interface RegisterModeOptions {
   aliases?: string[]
   copy?: boolean
 }
-
-const VALID_CATEGORIES = ['planning', 'implementation', 'investigation', 'management', 'special']
 
 /**
  * Parse YAML frontmatter from template file
@@ -217,7 +216,7 @@ export async function registerModeCommand(args: string[]): Promise<void> {
   }
 
   // Validate category
-  if (parsed.category && !VALID_CATEGORIES.includes(parsed.category)) {
+  if (parsed.category && !(VALID_CATEGORIES as readonly string[]).includes(parsed.category)) {
     // biome-ignore lint/suspicious/noConsole: CLI output
     console.error(`Error: Invalid category: ${parsed.category}`)
     // biome-ignore lint/suspicious/noConsole: CLI output

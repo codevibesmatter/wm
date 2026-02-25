@@ -695,23 +695,6 @@ export async function enter(args: string[]): Promise<void> {
   // Skip state write in dry-run mode
   if (!parsed.dryRun) {
     await writeState(stateFile, finalState)
-
-    // Create fd-notes.md for feature-documentation mode (interview context persistence)
-    if (canonical === 'feature-documentation') {
-      // Extract feature doc path and domain from state if available
-      const featureDocPath = (finalState as Record<string, unknown>).featureDocPath as
-        | string
-        | undefined
-      const domain = (finalState as Record<string, unknown>).domain as string | undefined
-      createFdNotesFile(stateFile, sessionId, featureDocPath, domain)
-    }
-
-    // Create doctrine-notes.md for doctrine mode (interview context persistence)
-    if (canonical === 'doctrine') {
-      const targetLayer = (finalState as Record<string, unknown>).targetLayer as string | undefined
-      const targetDoc = (finalState as Record<string, unknown>).targetDoc as string | undefined
-      createDoctrineNotesFile(stateFile, sessionId, targetLayer, targetDoc)
-    }
   }
 
   // Determine action taken (native tasks always recreate, so always 'started')
