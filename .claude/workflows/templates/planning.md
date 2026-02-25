@@ -435,74 +435,118 @@ phases:
           Then: Mark this task completed via TaskUpdate
 
   - id: p3
-    name: Review
+    name: Review Gate
     task_config:
-      title: "P3: Review - check completeness and correctness"
-      labels: [phase, phase-3, review]
+      title: "P3: Review Gate - spec review with fix loop (max 3 passes)"
+      labels: [phase, phase-3, review, gate]
       depends_on: [p2]
     steps:
-      - id: completeness-check
-        title: "Check spec completeness"
+      - id: run-spec-review
+        title: "Run spec review (pass 1)"
+        agent:
+          provider: "${providers.spec_reviewer}"
+          prompt: spec-review
+          context: [spec]
+          output: "reviews/spec-review-{date}.md"
+          gate: true
+          threshold: 75
         instruction: |
-          Review spec against this checklist:
-          - [ ] All behaviors have ID, Trigger, Expected, Verify
-          - [ ] No placeholder text (TODO, TBD, {variable} left unfilled)
-          - [ ] File paths in spec actually exist (or will be created)
-          - [ ] Implementation phases cover all behaviors
-          - [ ] Each phase has at least 1 test_case with type
-          - [ ] Non-goals section present
-          - [ ] Implementation Hints has: dependencies, key imports, 1+ code pattern
-          - [ ] Reference doc URLs present (not just library names)
-          - [ ] Verification Strategy specifies build command and test infra
-          - [ ] GitHub issue linked (or explicitly skipped)
+          Run the spec review via the configured provider:
 
-          Fix any gaps found.
-          Then: Mark this task completed via TaskUpdate
+          ```bash
+          kata review --prompt=spec-review --context=spec --output=reviews/
+          ```
 
-      - id: spawn-review-agent
-        title: "Spawn spec review agent and fix loop"
-        instruction: |
+          This runs the spec-review prompt against the spec file and returns
+          a score (0-100) with categorized issues.
+
+          **Check result:**
+          - **PASS (score >= 75):** Skip to close-review step.
+          - **GAPS_FOUND (score < 75):** Proceed to fix loop.
+
           Mark issue as needing review:
           ```bash
           gh issue edit {N} --remove-label "needs-spec" --add-label "needs-review"
           ```
 
-          Spawn a review agent to give a second opinion:
+          Then: Mark this task completed via TaskUpdate
 
-          Task(subagent_type="general-purpose", prompt="
-            Review this spec for completeness and correctness:
-            Read: planning/specs/{spec-file}.md
+      - id: fix-loop
+        title: "Fix loop - address review issues (max 3 passes)"
+        instruction: |
+          **Only execute if spec review score < 75.**
 
-            Check:
-            1. Are behaviors clear and testable?
-            2. Are phases realistic (not too large or small)?
-            3. Missing edge cases?
-            4. Ambiguous requirements?
-            5. Implementation Hints has: dependencies, key imports, 1+ code pattern?
-            6. Reference doc URLs present (not just library names)?
-            7. Test Plan covers happy path AND error paths?
+          Read the review output. Issues are categorized by the reviewer.
 
-            Output: numbered list of issues (or 'LGTM' if clean).
-            Classify each issue as BLOCKING (must fix) or SUGGESTION (nice to have).
-          ", run_in_background=false)
+          **Pass {N} fix cycle:**
 
-          **Fix loop:**
-
-          If review found BLOCKING issues:
-          1. Spawn a fixer agent with the specific issues to address:
+          1. Spawn a fixer agent with the specific issues:
 
              Task(subagent_type="general-purpose", prompt="
-               Fix the following issues in planning/specs/{spec-file}.md:
-               [paste BLOCKING issues from review]
-               Read the spec, fix each issue, verify no placeholder text remains.
+               Fix the following spec review issues in planning/specs/{spec-file}.md:
+               [paste all issues from the review output]
+
+               For each issue:
+               - Read the relevant spec section
+               - Fix the gap (add missing content, clarify ambiguity, etc.)
+               - Verify no placeholder text (TODO, TBD) remains
+
+               Checklist after fixes:
+               - [ ] All behaviors have ID, Trigger, Expected, Verify
+               - [ ] No placeholder text
+               - [ ] Implementation phases cover all behaviors
+               - [ ] Each phase has at least 1 test_case with type
+               - [ ] Non-goals section present
+               - [ ] Implementation Hints has: dependencies, key imports, 1+ code pattern
+               - [ ] Reference doc URLs present (not just library names)
+               - [ ] Verification Strategy specifies build command and test infra
              ", run_in_background=false)
 
-          2. Re-run the completeness checklist (previous step) against the fixed spec.
+          2. Re-run spec review:
+             ```bash
+             kata review --prompt=spec-review --context=spec --output=reviews/
+             ```
 
-          3. If issues persist after 2 fix iterations, present remaining issues
-             to the user and ask whether to accept as-is or continue fixing.
+          3. Check new score:
+             - **score >= 75:** Exit fix loop, proceed to close-review.
+             - **score < 75 and pass < 3:** Repeat fix cycle with new issues.
+             - **score < 75 and pass = 3 (max reached):** Escalate to user.
 
-          For SUGGESTION items: apply judgment — fix easy ones, skip subjective ones.
+          **After 3 failed passes — escalate:**
+
+          Present remaining issues and score to the user:
+
+          AskUserQuestion(questions=[{
+            question: "Spec review scored {score}/100 after 3 fix passes. Remaining issues above. How to proceed?",
+            header: "Gate",
+            options: [
+              {label: "Accept as-is", description: "Proceed with current spec quality"},
+              {label: "Fix manually", description: "I'll address the remaining issues myself"},
+              {label: "Retry", description: "Run another fix pass with different approach"}
+            ],
+            multiSelect: false
+          }])
+
+          If "Accept as-is": proceed to close-review.
+          If "Fix manually": wait for user edits, then re-run review.
+          If "Retry": run one more fix+review cycle.
+
+          Then: Mark this task completed via TaskUpdate
+
+      - id: close-review
+        title: "Close review gate"
+        instruction: |
+          Review gate passed (or user accepted).
+
+          Update issue labels:
+          ```bash
+          gh issue edit {N} --remove-label "needs-review" --add-label "reviewed"
+          ```
+
+          Log the gate result for the finalize phase:
+          - Final score: {score}/100
+          - Passes used: {N}/3
+          - Status: PASSED | ACCEPTED_BY_USER
 
           Then: Mark this task completed via TaskUpdate
 
@@ -596,9 +640,10 @@ P2: Spec Writing
     ├── Verify spec completeness
     └── Link GitHub issue
 
-P3: Review
-    ├── Completeness checklist
-    └── Spec review agent + fix loop
+P3: Review Gate
+    ├── Spec review via configured provider (kata review --prompt=spec-review)
+    ├── Fix loop (max 3 passes, score >= 75 to pass)
+    └── Escalate to user if gate fails after 3 passes
 
 P4: Finalize
     ├── Mark approved
@@ -649,14 +694,27 @@ Task(subagent_type="general-purpose", prompt="
 ### One-shot review (no fix loop)
 ```
 # BAD — review finds issues, you just "address" them vaguely
-Task(prompt="Review spec") → "5 issues found"
-# ... move on
+kata review --prompt=spec-review → score 58/100
+# ... move on anyway
 
-# GOOD — review, fix, re-verify
-Task(prompt="Review spec") → "3 BLOCKING, 2 SUGGESTION"
-Task(prompt="Fix these 3 blocking issues in spec") → fixed
-Re-run completeness checklist → all clear
+# GOOD — review gate with fix loop (max 3 passes)
+kata review --prompt=spec-review → score 58/100 (GAPS_FOUND)
+Task(prompt="Fix these issues in spec") → fixed
+kata review --prompt=spec-review → score 82/100 (PASS)
+# Gate cleared in 2 passes
 ```
+
+### Configuring the spec reviewer
+
+Projects can override which provider runs spec reviews in `wm.yaml`:
+
+```yaml
+reviews:
+  spec_reviewer: gemini    # or 'claude', 'codex', etc.
+```
+
+The template uses `${providers.spec_reviewer}` which resolves from
+`reviews.spec_reviewer` → `providers.default` → `'claude'` (fallback chain).
 
 ## Stop Conditions
 
