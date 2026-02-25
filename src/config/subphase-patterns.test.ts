@@ -73,6 +73,58 @@ describe('subphasePatternSchema (step-level)', () => {
     })
     expect(result.success).toBe(true)
   })
+
+  it('accepts instruction field', () => {
+    const result = subphasePatternSchema.safeParse({
+      id_suffix: 'verify',
+      title_template: 'VERIFY',
+      todo_template: 'Verify',
+      active_form: 'Verifying',
+      instruction: 'Run: kata verify-phase {phase_label} --issue={issue}',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.instruction).toBe('Run: kata verify-phase {phase_label} --issue={issue}')
+    }
+  })
+
+  it('accepts agent field', () => {
+    const result = subphasePatternSchema.safeParse({
+      id_suffix: 'review',
+      title_template: 'REVIEW',
+      todo_template: 'Review',
+      active_form: 'Reviewing',
+      agent: {
+        provider: 'codex',
+        prompt: 'code-review',
+        context: ['git_diff', 'spec'],
+        gate: true,
+        threshold: 80,
+      },
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.agent?.provider).toBe('codex')
+      expect(result.data.agent?.prompt).toBe('code-review')
+      expect(result.data.agent?.gate).toBe(true)
+      expect(result.data.agent?.threshold).toBe(80)
+    }
+  })
+
+  it('accepts both instruction and agent together', () => {
+    const result = subphasePatternSchema.safeParse({
+      id_suffix: 'review',
+      title_template: 'REVIEW',
+      todo_template: 'Review',
+      active_form: 'Reviewing',
+      instruction: 'Review {phase_name} implementation',
+      agent: {
+        provider: 'gemini',
+        prompt: 'code-review',
+      },
+    })
+    expect(result.success).toBe(true)
+  })
 })
 
 describe('SubphasePatternDefinitionSchema', () => {
@@ -379,5 +431,101 @@ describe('loadSubphasePatterns 2-tier merge', () => {
 
     const config = await loadSubphasePatterns()
     expect(config.subphase_patterns['impl-verify'].description).toBe('Old layout pattern')
+  })
+})
+
+// ── buildSpecTasks instruction/agent propagation ──
+
+import { buildSpecTasks } from '../commands/enter/task-factory.js'
+
+const sampleSpecPhases = [
+  { id: 'auth', name: 'Authentication', tasks: ['Add login endpoint'] },
+]
+
+describe('buildSpecTasks instruction/agent propagation', () => {
+  it('propagates instruction with placeholder resolution', () => {
+    const pattern = [
+      {
+        id_suffix: 'impl',
+        title_template: 'IMPL - {task_summary}',
+        todo_template: 'Implement {task_summary}',
+        active_form: 'Implementing {phase_name}',
+        labels: [],
+      },
+      {
+        id_suffix: 'verify',
+        title_template: 'VERIFY - {phase_name}',
+        todo_template: 'Verify {phase_name}',
+        active_form: 'Verifying {phase_name}',
+        labels: [],
+        depends_on_previous: true,
+        instruction: 'Run: kata verify-phase {phase_label} --issue={issue}',
+      },
+    ]
+
+    const tasks = buildSpecTasks(sampleSpecPhases, 42, pattern)
+    const verifyTask = tasks.find((t) => t.id === 'p2.1:verify')
+    expect(verifyTask).toBeDefined()
+    expect(verifyTask!.instruction).toBe('Run: kata verify-phase P2.1 --issue=42')
+  })
+
+  it('propagates agent config as kata review command', () => {
+    const pattern = [
+      {
+        id_suffix: 'review',
+        title_template: 'REVIEW - {task_summary}',
+        todo_template: 'Review {task_summary}',
+        active_form: 'Reviewing {phase_name}',
+        labels: [],
+        agent: {
+          provider: 'codex',
+          prompt: 'code-review',
+          gate: true,
+          threshold: 80,
+        },
+      },
+    ]
+
+    const tasks = buildSpecTasks(sampleSpecPhases, 99, pattern)
+    expect(tasks).toHaveLength(1)
+    expect(tasks[0].instruction).toContain('kata review --prompt=code-review')
+    expect(tasks[0].instruction).toContain('--provider=codex')
+    expect(tasks[0].instruction).toContain('gate: score >= 80')
+  })
+
+  it('combines instruction and agent into single instruction', () => {
+    const pattern = [
+      {
+        id_suffix: 'review',
+        title_template: 'REVIEW - {task_summary}',
+        todo_template: 'Review {task_summary}',
+        active_form: 'Reviewing {phase_name}',
+        labels: [],
+        instruction: 'Review {phase_name} implementation',
+        agent: {
+          provider: 'gemini',
+          prompt: 'code-review',
+        },
+      },
+    ]
+
+    const tasks = buildSpecTasks(sampleSpecPhases, 1, pattern)
+    expect(tasks[0].instruction).toContain('Review Authentication implementation')
+    expect(tasks[0].instruction).toContain('kata review --prompt=code-review --provider=gemini')
+  })
+
+  it('omits instruction when pattern has neither instruction nor agent', () => {
+    const pattern = [
+      {
+        id_suffix: 'impl',
+        title_template: 'IMPL - {task_summary}',
+        todo_template: 'Implement {task_summary}',
+        active_form: 'Implementing {phase_name}',
+        labels: [],
+      },
+    ]
+
+    const tasks = buildSpecTasks(sampleSpecPhases, 1, pattern)
+    expect(tasks[0].instruction).toBeUndefined()
   })
 })

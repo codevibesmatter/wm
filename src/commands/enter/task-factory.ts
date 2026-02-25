@@ -87,6 +87,7 @@ export function buildSpecTasks(
             phaseName,
             phaseLabel,
           }).replace(/{issue}/g, String(issueNum))
+        }
         if (patternItem.agent) {
           const agentLine = `\nRun: kata review --prompt=${patternItem.agent.prompt}` +
             (patternItem.agent.provider ? ` --provider=${patternItem.agent.provider}` : '') +
