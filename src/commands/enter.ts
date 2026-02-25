@@ -1,5 +1,5 @@
 // kata enter - Enter a mode
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import {
   getCurrentSessionId,
@@ -645,7 +645,9 @@ export async function enter(args: string[]): Promise<void> {
       const orchTasks = modeConfig.template
         ? buildPhaseTasks(modeConfig.template, workflowId, issueNum)
         : []
-      const specTasks = buildSpecTasks(specPhases, issueNum, resolvedSubphasePattern, containerPhaseNum)
+      // Read spec file content for VP extraction (used by {verification_plan} placeholder)
+      const specContent = specPath ? readFileSync(specPath, 'utf-8') : undefined
+      const specTasks = buildSpecTasks(specPhases, issueNum, resolvedSubphasePattern, containerPhaseNum, specContent)
 
       // Wire cross-phase dependencies:
       // - First P2.X:impl depends on last task of P1 (Claim)

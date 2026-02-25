@@ -436,7 +436,7 @@ describe('loadSubphasePatterns 2-tier merge', () => {
 
 // ── buildSpecTasks instruction/agent propagation ──
 
-import { buildSpecTasks } from '../commands/enter/task-factory.js'
+import { buildSpecTasks, extractVerificationPlan } from '../commands/enter/task-factory.js'
 
 const sampleSpecPhases = [
   { id: 'auth', name: 'Authentication', tasks: ['Add login endpoint'] },
@@ -527,5 +527,153 @@ describe('buildSpecTasks instruction/agent propagation', () => {
 
     const tasks = buildSpecTasks(sampleSpecPhases, 1, pattern)
     expect(tasks[0].instruction).toBeUndefined()
+  })
+})
+
+// ── extractVerificationPlan ──
+
+describe('extractVerificationPlan', () => {
+  it('extracts VP section from spec with content after', () => {
+    const spec = [
+      '## Overview',
+      'Some overview.',
+      '',
+      '## Verification Plan',
+      '',
+      '### VP1: Health check',
+      'Steps:',
+      '1. `curl http://localhost:3000/health`',
+      '   Expected: 200 OK',
+      '',
+      '## Implementation Hints',
+      'Some hints.',
+    ].join('\n')
+
+    const vp = extractVerificationPlan(spec)
+    expect(vp).not.toBeNull()
+    expect(vp).toContain('## Verification Plan')
+    expect(vp).toContain('### VP1: Health check')
+    expect(vp).toContain('curl http://localhost:3000/health')
+    expect(vp).not.toContain('Implementation Hints')
+  })
+
+  it('extracts VP section at end of file', () => {
+    const spec = [
+      '## Overview',
+      'Some overview.',
+      '',
+      '## Verification Plan',
+      '',
+      '### VP1: Smoke test',
+      '1. `curl http://localhost:3000`',
+      '   Expected: 200',
+    ].join('\n')
+
+    const vp = extractVerificationPlan(spec)
+    expect(vp).not.toBeNull()
+    expect(vp).toContain('### VP1: Smoke test')
+  })
+
+  it('returns null when no VP section exists', () => {
+    const spec = [
+      '## Overview',
+      'Some overview.',
+      '',
+      '## Implementation Hints',
+      'Some hints.',
+    ].join('\n')
+
+    expect(extractVerificationPlan(spec)).toBeNull()
+  })
+})
+
+// ── buildSpecTasks VP injection ──
+
+describe('buildSpecTasks verification plan injection', () => {
+  const vpPattern = [
+    {
+      id_suffix: 'impl',
+      title_template: 'IMPL - {task_summary}',
+      todo_template: 'Implement {task_summary}',
+      active_form: 'Implementing {phase_name}',
+      labels: [] as string[],
+    },
+    {
+      id_suffix: 'test',
+      title_template: 'TEST - {phase_name}',
+      todo_template: 'Test {phase_name}',
+      active_form: 'Testing {phase_name}',
+      labels: [] as string[],
+      depends_on_previous: true,
+      instruction: 'Run: kata verify-phase {phase_label} --issue={issue}',
+    },
+    {
+      id_suffix: 'verify',
+      title_template: 'VERIFY - {phase_name}',
+      todo_template: 'Verify {phase_name}',
+      active_form: 'Verifying {phase_name}',
+      labels: [] as string[],
+      depends_on_previous: true,
+      instruction: 'Execute VP:\n{verification_plan}',
+    },
+  ]
+
+  it('injects VP content into {verification_plan} placeholder', () => {
+    const specContent = [
+      '## Overview',
+      'Test feature.',
+      '',
+      '## Verification Plan',
+      '',
+      '### VP1: Health check',
+      '1. `curl http://localhost:3000/health`',
+      '   Expected: 200 OK',
+      '',
+      '## Implementation Hints',
+    ].join('\n')
+
+    const tasks = buildSpecTasks(sampleSpecPhases, 42, vpPattern, 2, specContent)
+    const verifyTask = tasks.find((t) => t.id === 'p2.1:verify')
+    expect(verifyTask).toBeDefined()
+    expect(verifyTask!.instruction).toContain('### VP1: Health check')
+    expect(verifyTask!.instruction).toContain('curl http://localhost:3000/health')
+    expect(verifyTask!.instruction).not.toContain('{verification_plan}')
+  })
+
+  it('uses fallback text when spec has no VP section', () => {
+    const specContent = [
+      '## Overview',
+      'Test feature.',
+      '',
+      '## Implementation Hints',
+    ].join('\n')
+
+    const tasks = buildSpecTasks(sampleSpecPhases, 42, vpPattern, 2, specContent)
+    const verifyTask = tasks.find((t) => t.id === 'p2.1:verify')
+    expect(verifyTask).toBeDefined()
+    expect(verifyTask!.instruction).toContain('No verification plan found in spec')
+    expect(verifyTask!.instruction).not.toContain('{verification_plan}')
+  })
+
+  it('uses fallback text when specContent is not provided', () => {
+    const tasks = buildSpecTasks(sampleSpecPhases, 42, vpPattern)
+    const verifyTask = tasks.find((t) => t.id === 'p2.1:verify')
+    expect(verifyTask).toBeDefined()
+    expect(verifyTask!.instruction).toContain('No verification plan found in spec')
+  })
+
+  it('creates 3-step dependency chain (impl → test → verify)', () => {
+    const tasks = buildSpecTasks(sampleSpecPhases, 42, vpPattern)
+    const impl = tasks.find((t) => t.id === 'p2.1:impl')
+    const test = tasks.find((t) => t.id === 'p2.1:test')
+    const verify = tasks.find((t) => t.id === 'p2.1:verify')
+
+    expect(impl).toBeDefined()
+    expect(test).toBeDefined()
+    expect(verify).toBeDefined()
+
+    expect(impl!.depends_on).toEqual([])
+    expect(test!.depends_on).toEqual(['p2.1:impl'])
+    expect(verify!.depends_on).toEqual(['p2.1:test'])
   })
 })
