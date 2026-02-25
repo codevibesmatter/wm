@@ -3,12 +3,18 @@ import { initManager } from './projects/init-manager.js'
 import { listProjects } from './projects/list.js'
 import { addProject } from './projects/add.js'
 import { removeProject } from './projects/remove.js'
+import { initProject } from './projects/init.js'
+import { doctorProjects } from './projects/doctor.js'
+import { upgradeProjects } from './projects/upgrade.js'
 
 const SUBCOMMANDS: Record<string, (args: string[]) => Promise<void>> = {
   'init-manager': initManager,
   list: listProjects,
   add: addProject,
   remove: removeProject,
+  init: initProject,
+  doctor: doctorProjects,
+  upgrade: upgradeProjects,
 }
 
 function printUsage(): void {
@@ -20,12 +26,18 @@ Subcommands:
   list [--json] [--refresh]                 List registered projects
   add <path> [--alias=<name>]               Add a project to the registry
   remove <alias-or-path>                    Remove a project from the registry
+  init <path> [--alias=<name>]              Initialize new project + register
+  doctor [<project>] [--fix] [--json]       Health checks across projects
+  upgrade [<project>] [--dry-run]           Bulk batteries update
 
 Examples:
   kata projects init-manager
   kata projects list
   kata projects add /path/to/project --alias=myproj
   kata projects remove myproj
+  kata projects init /path/to/new-project
+  kata projects doctor
+  kata projects upgrade --dry-run
 `)
 }
 
