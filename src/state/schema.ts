@@ -1,6 +1,36 @@
 import { z } from 'zod'
 
 /**
+ * Stop condition types — validated enum for modes.yaml stop_conditions field.
+ * Adding a new stop condition requires updating this array AND implementing
+ * the check in the stop-conditions hook.
+ */
+export const STOP_CONDITION_TYPES = [
+  'tasks_complete',
+  'committed',
+  'pushed',
+  'verification',
+  'tests_pass',
+  'feature_tests_added',
+] as const
+
+export type StopCondition = (typeof STOP_CONDITION_TYPES)[number]
+
+/**
+ * Valid mode categories — single source of truth for ModeConfigSchema.category enum.
+ */
+export const VALID_CATEGORIES = [
+  'planning',
+  'implementation',
+  'investigation',
+  'management',
+  'special',
+  'system',
+] as const
+
+export type ModeCategory = (typeof VALID_CATEGORIES)[number]
+
+/**
  * Session state schema - represents the current state of a Claude Code session
  * including mode, phase, and workflow tracking.
  */
@@ -154,20 +184,14 @@ export const ModeConfigSchema = z.object({
   template: z.string(),
   workflow_prefix: z.string().optional(),
   phases: z.array(z.string()).optional(), // Deprecated: phases come from templates now
-  category: z.enum([
-    'planning',
-    'implementation',
-    'investigation',
-    'management',
-    'special',
-    'system',
-  ]),
+  category: z.enum(VALID_CATEGORIES),
   aliases: z.array(z.string()).optional(),
   deprecated: z.boolean().optional(),
   redirect_to: z.string().optional(),
-  micro_planning: z.boolean().optional(),
   issue_handling: z.enum(['required', 'none']).optional(), // How issues are handled on entry
-  stop_conditions: z.array(z.string()).optional(), // Which checks to run before allowing exit
+  stop_conditions: z.array(z.enum(STOP_CONDITION_TYPES)).optional(), // Which checks to run before allowing exit
+  notes_file_template: z.string().optional(), // Template for notes file path, e.g., "planning/research/{date}-{slug}.md"
+  issue_label: z.string().optional(), // GitHub label to apply when creating issues, e.g., "feature", "bug"
   behavior: ModeBehaviorSchema.optional(), // Behavioral guidance
 })
 

@@ -293,7 +293,7 @@ function buildCommand(
   // Derive issue requirement from modes.yaml instead of a hardcoded list
   if (modeConfig.issue_handling === 'required') {
     const title = inferTitle(message)
-    const label = mode === 'bugfix' ? 'bug' : 'feature'
+    const label = modeConfig.issue_label || 'feature'
     return `gh issue create --title="${title}" --label="${label}" && kata enter ${mode} --issue=<NEW_ISSUE>`
   }
 

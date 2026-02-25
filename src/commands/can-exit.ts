@@ -435,7 +435,7 @@ export async function canExit(args: string[]): Promise<void> {
       if (templateYaml?.global_conditions) {
         for (const cond of templateYaml.global_conditions) {
           // Normalize: "changes_committed" → "committed", "changes_pushed" → "pushed"
-          const normalized = cond.replace(/^changes_/, '')
+          const normalized = cond.replace(/^changes_/, '') as import('../state/schema.js').StopCondition
           if (!stopConditions.includes(normalized)) {
             stopConditions.push(normalized)
           }
