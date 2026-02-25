@@ -301,7 +301,7 @@ phases:
   - id: p2
     name: Spec Writing
     task_config:
-      title: "P2: Spec - write feature specification from template"
+      title: "P2: Spec - spawn agent to write feature specification"
       labels: [phase, phase-2, spec]
       depends_on: [p1]
     steps:
@@ -333,68 +333,79 @@ phases:
 
           Then: Mark this task completed via TaskUpdate
 
-      - id: write-behaviors
-        title: "Write feature behaviors and acceptance criteria"
+      - id: spawn-spec-writer
+        title: "Spawn spec writer agent"
         instruction: |
-          Write the spec body following this structure.
-          Use the interview answers from P1 as your primary input.
+          **Do NOT write the spec yourself.** Spawn an agent to preserve context.
 
-          ## Overview
-          1-3 sentences: what problem this solves, for whom, and why now.
+          Compile ALL context the agent needs into the prompt:
+          - Research findings from P0 (bullet points)
+          - All interview answers from P1 (requirements, architecture, testing, design)
+          - The approved requirements summary
 
-          ## Feature Behaviors
+          Task(subagent_type="general-purpose", prompt="
+            ROLE: Spec Writer
+            SPEC FILE: planning/specs/{spec-file}.md
 
-          For each behavior:
-          ```
-          ### B{N}: {Behavior Name}
-          **Core:**
-          - **ID:** {kebab-case-id}
-          - **Trigger:** {what causes this}
-          - **Expected:** {what should happen}
-          - **Verify:** {how to confirm it works}
+            RESEARCH FINDINGS:
+            [paste P0 research bullet points]
 
-          **UI Layer:** {what the user sees}
-          **API Layer:** {endpoint, input, output}
-          **Data Layer:** {schema changes, if any}
-          ```
+            APPROVED REQUIREMENTS:
+            [paste the full requirements summary from P1 approval gate]
 
-          ## Non-Goals
-          Explicit list of what this feature does NOT do.
-          (Use the "Scope OUT" answers from the requirements interview.)
+            Write the spec body following this structure:
 
-          ## Implementation Phases
-          Break into 2-5 phases (p1, p2...) with concrete tasks per phase.
-          Phases go in the YAML frontmatter `phases:` array.
-          For each phase, add `test_cases:` with 1-3 entries specifying what to test
-          and whether it's a unit, integration, or smoke test.
-          (Use the testing strategy interview answers to inform test_cases.)
+            ## Overview
+            1-3 sentences: what problem this solves, for whom, and why now.
 
-          Then: Mark this task completed via TaskUpdate
+            ## Feature Behaviors
+            For each behavior:
+              ### B{N}: {Behavior Name}
+              **Core:**
+              - **ID:** {kebab-case-id}
+              - **Trigger:** {what causes this}
+              - **Expected:** {what should happen}
+              - **Verify:** {how to confirm it works}
+              **UI Layer:** {what the user sees}
+              **API Layer:** {endpoint, input, output}
+              **Data Layer:** {schema changes, if any}
 
-      - id: extract-patterns
-        title: "Extract code patterns and implementation hints"
-        instruction: |
-          Fill in the spec's Implementation Hints and Verification Strategy sections.
-          This prevents the implementation agent from re-discovering APIs from scratch.
+            ## Non-Goals
+            Explicit list from Scope OUT answers.
 
-          1. Re-read the research doc(s) from P0. Extract any code snippets,
-             import paths, install commands, or API patterns discovered.
-          2. If the feature uses external libraries, web-search for the exact
-             integration guide. Extract: install commands, import paths,
-             initialization patterns, key API calls.
-          3. If the feature touches framework-specific patterns (routing,
-             middleware, SSR), find the canonical pattern in the project's
-             existing code or framework docs.
-          4. Fill in the Key Imports table — exact package subpath exports
-             and named imports the implementer will need.
-          5. Add 2-5 Code Patterns — short snippets showing initialization,
-             wiring, and key API usage. These should be copy-pasteable starting
-             points, not full implementations.
-          6. List Gotchas — package subpath export quirks, peer dependencies,
-             TypeScript config requirements, build-time code generation.
-          7. Fill in Verification Strategy — what test infra exists (or must
-             be created), the correct build/check command for this project.
-          8. Add Reference Doc URLs with descriptions.
+            ## Test Plan
+            Based on testing interview answers. For each test:
+            - Scenario description
+            - Type: unit / integration / e2e
+            - What it verifies
+
+            ## Implementation Phases
+            Break into 2-5 phases with concrete tasks per phase.
+            Phases go in YAML frontmatter phases: array.
+            Each phase gets test_cases: with 1-3 entries.
+
+            ## Implementation Hints
+            1. Key Imports table — exact package subpath exports and named imports
+            2. Code Patterns — 2-5 copy-pasteable snippets (init, wiring, key API usage)
+            3. Gotchas — subpath export quirks, peer deps, TS config, code generation
+            4. Verification Strategy — test infra, build/check command for this project
+            5. Reference Doc URLs with descriptions
+
+            To fill Implementation Hints: re-read P0 research, web-search for
+            integration guides if external libraries are involved, find canonical
+            patterns in the project's existing code.
+
+            REQUIREMENTS:
+            - No TBD/TODO/placeholder text
+            - File paths must reference real files (verify with Glob/Grep)
+            - Every behavior must have all Core fields filled
+            - Return when spec is complete
+          ", run_in_background=false)
+
+          Read the spec file to verify completeness:
+          - No placeholder text remaining
+          - All sections have content
+          - Behaviors have all required fields
 
           Then: Mark this task completed via TaskUpdate
 
@@ -449,7 +460,7 @@ phases:
           Then: Mark this task completed via TaskUpdate
 
       - id: spawn-review-agent
-        title: "Spawn spec review agent"
+        title: "Spawn spec review agent and fix loop"
         instruction: |
           Mark issue as needing review:
           ```bash
@@ -467,11 +478,32 @@ phases:
             2. Are phases realistic (not too large or small)?
             3. Missing edge cases?
             4. Ambiguous requirements?
+            5. Implementation Hints has: dependencies, key imports, 1+ code pattern?
+            6. Reference doc URLs present (not just library names)?
+            7. Test Plan covers happy path AND error paths?
 
-            Output: numbered list of issues (or 'LGTM' if clean)
+            Output: numbered list of issues (or 'LGTM' if clean).
+            Classify each issue as BLOCKING (must fix) or SUGGESTION (nice to have).
           ", run_in_background=false)
 
-          Address any issues raised.
+          **Fix loop:**
+
+          If review found BLOCKING issues:
+          1. Spawn a fixer agent with the specific issues to address:
+
+             Task(subagent_type="general-purpose", prompt="
+               Fix the following issues in planning/specs/{spec-file}.md:
+               [paste BLOCKING issues from review]
+               Read the spec, fix each issue, verify no placeholder text remains.
+             ", run_in_background=false)
+
+          2. Re-run the completeness checklist (previous step) against the fixed spec.
+
+          3. If issues persist after 2 fix iterations, present remaining issues
+             to the user and ask whether to accept as-is or continue fixing.
+
+          For SUGGESTION items: apply judgment — fix easy ones, skip subjective ones.
+
           Then: Mark this task completed via TaskUpdate
 
   - id: p4
@@ -520,6 +552,30 @@ global_conditions:
 
 You are in **planning** mode. Create a feature spec through research, interviews, writing, and review.
 
+## Orchestrator Role
+
+**You coordinate work. You do not do deep work inline.**
+
+Spawn agents for research, spec writing, and review. This preserves your context
+window for orchestration — tracking progress, asking the user questions, and
+verifying agent outputs.
+
+| Action | Do this | Not this |
+|--------|---------|----------|
+| Understand codebase | `Task(subagent_type="Explore", ...)` | Read 20 files inline |
+| Write spec content | `Task(subagent_type="general-purpose", ...)` | Write 200 lines of spec yourself |
+| Review spec | `Task(subagent_type="general-purpose", ...)` | Re-read entire spec to check quality |
+
+**What you DO inline:**
+- Ask the user questions (AskUserQuestion)
+- Run CLI commands (gh, kata, git)
+- Quick verification reads (confirm agent output, check for placeholders)
+- Compile context for agent prompts
+
+**Self-check before each action:**
+> "Am I about to read source files to understand code?" → Spawn Explore agent instead.
+> "Am I about to write spec content?" → Spawn a writer agent instead.
+
 ## Phase Flow
 
 ```
@@ -536,13 +592,13 @@ P1: Interview
 
 P2: Spec Writing
     ├── Create spec file from template
-    ├── Write behaviors + acceptance criteria (informed by interviews)
-    ├── Extract code patterns + implementation hints
+    ├── Spawn spec writer agent (with all P0+P1 context)
+    ├── Verify spec completeness
     └── Link GitHub issue
 
 P3: Review
     ├── Completeness checklist
-    └── Spec review agent
+    └── Spec review agent + fix loop
 
 P4: Finalize
     ├── Mark approved
@@ -561,6 +617,46 @@ Projects can customize questions by editing `.kata/interviews.yaml`.
 | Architecture | Integration points, error handling, performance requirements |
 | Testing | Happy path scenarios, error paths, test types |
 | Design | Reference pages, layout patterns, reusable components (skipped for backend-only) |
+
+## Anti-Patterns
+
+### Inline research (wastes context)
+```
+# BAD — 10,000 tokens of source code polluting your context
+Read(file1.ts)    → 500 tokens
+Read(file2.ts)    → 500 tokens
+...20 files       → 10,000 tokens
+
+# GOOD — 250 tokens, agent reads 20 files internally
+Task(subagent_type="Explore", prompt="Find patterns related to X")
+TaskOutput(task_id=..., block=true)  → 200 token summary
+```
+
+### Writing spec content yourself
+```
+# BAD — you're writing 200 lines of spec content
+Edit(file="planning/specs/123-feature.md", ...)
+
+# GOOD — agent writes, you verify
+Task(subagent_type="general-purpose", prompt="
+  SPEC FILE: planning/specs/123-feature.md
+  RESEARCH: [findings from P0]
+  REQUIREMENTS: [approved answers from P1]
+  Fill all sections. No TBD placeholders.
+")
+```
+
+### One-shot review (no fix loop)
+```
+# BAD — review finds issues, you just "address" them vaguely
+Task(prompt="Review spec") → "5 issues found"
+# ... move on
+
+# GOOD — review, fix, re-verify
+Task(prompt="Review spec") → "3 BLOCKING, 2 SUGGESTION"
+Task(prompt="Fix these 3 blocking issues in spec") → fixed
+Re-run completeness checklist → all clear
+```
 
 ## Stop Conditions
 
