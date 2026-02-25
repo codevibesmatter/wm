@@ -31,23 +31,9 @@ subphase_patterns:
           Spawn a FRESH verification agent to execute the spec's Verification Plan.
           The agent should have NO knowledge of the implementation — only the VP steps.
 
-          ## Verification Tools
-
-          The agent has access to these tools for real-system verification:
-
-          **Dev Server:** Start the project's dev server (see `dev_server_command` in wm.yaml
-          or the VP steps). Wait for the health endpoint before proceeding.
-
-          **API Testing:** Use `curl`, `httpie`, or direct HTTP requests via Bash to hit
-          real API endpoints. Check status codes, response bodies, headers.
-
-          **Browser Testing:** For UI features, use the browser tool (WebFetch) or describe
-          navigation steps. Check that pages render, forms submit, and UI state updates.
-
-          **CLI Testing:** Run CLI commands and verify stdout/stderr output matches expectations.
-
-          **Database/State Checks:** Query real data stores to verify side effects
-          (records created, state changed, files written).
+          Before executing, read `batteries/verification-tools.md` for tool reference
+          (dev server management, API testing with curl, browser testing, CLI testing,
+          database checks, and evidence file format).
 
           ## Verification Plan
 
