@@ -174,9 +174,12 @@ describe('canExit', () => {
     const output = await captureCanExit(['--json', `--session=${process.env.CLAUDE_SESSION_ID}`])
     const result = JSON.parse(output) as { canExit: boolean; reasons: string[] }
 
-    // code_review: false disables verification
-    const hasVerificationReason = result.reasons.some((r) => r.includes('Verification'))
-    expect(hasVerificationReason).toBe(false)
+    // code_review: false disables the `verification` stop condition (codex/gemini review)
+    // but does NOT disable `verification_plan_executed` — those are independent checks
+    const hasCodeReviewReason = result.reasons.some(
+      (r) => r.includes('Verification not run') || r.includes('Verification failed') || r.includes('Verification evidence is stale'),
+    )
+    expect(hasCodeReviewReason).toBe(false)
   })
 
   it('allows exit for freeform session type', async () => {
@@ -314,6 +317,103 @@ describe('canExit', () => {
 
     const blockedByFailed = result.reasons.some((r) => r.includes('failed verify-phase'))
     expect(blockedByFailed).toBe(true)
+  })
+
+  it('checkVpEvidence: blocks when no VP evidence files exist', async () => {
+    writeFileSync(
+      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
+      jsYaml.dump({ reviews: { code_reviewer: null } }),
+    )
+
+    createSessionState({
+      sessionType: 'implementation',
+      currentMode: 'implementation',
+      issueNumber: 100,
+    })
+
+    const output = await captureCanExit(['--json', `--session=${process.env.CLAUDE_SESSION_ID}`])
+    const result = JSON.parse(output) as { canExit: boolean; reasons: string[] }
+
+    const blockedByVp = result.reasons.some((r) => r.includes('VP evidence') || r.includes('Verification Plan'))
+    expect(blockedByVp).toBe(true)
+  })
+
+  it('checkVpEvidence: passes when VP evidence exists with allStepsPassed true', async () => {
+    writeFileSync(
+      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
+      jsYaml.dump({ reviews: { code_reviewer: null } }),
+    )
+
+    createSessionState({
+      sessionType: 'implementation',
+      currentMode: 'implementation',
+      issueNumber: 101,
+    })
+
+    // Create passing VP evidence file + phase evidence
+    const evidenceDir = join(tmpDir, '.claude', 'verification-evidence')
+    mkdirSync(evidenceDir, { recursive: true })
+    writeFileSync(
+      join(evidenceDir, 'vp-p1-101.json'),
+      JSON.stringify({
+        phaseId: 'p1',
+        issueNumber: 101,
+        timestamp: new Date().toISOString(),
+        allStepsPassed: true,
+        steps: [{ id: 'VP1', passed: true }],
+      }),
+    )
+    // Also need phase evidence for tests_pass check
+    writeFileSync(
+      join(evidenceDir, 'phase-p1-101.json'),
+      JSON.stringify({
+        phaseId: 'p1',
+        issueNumber: 101,
+        timestamp: new Date().toISOString(),
+        overallPassed: true,
+      }),
+    )
+
+    const output = await captureCanExit(['--json', `--session=${process.env.CLAUDE_SESSION_ID}`])
+    const result = JSON.parse(output) as { canExit: boolean; reasons: string[] }
+
+    const blockedByVp = result.reasons.some((r) => r.includes('VP') || r.includes('Verification Plan'))
+    expect(blockedByVp).toBe(false)
+  })
+
+  it('checkVpEvidence: blocks when VP evidence has failing steps', async () => {
+    writeFileSync(
+      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
+      jsYaml.dump({ reviews: { code_reviewer: null } }),
+    )
+
+    createSessionState({
+      sessionType: 'implementation',
+      currentMode: 'implementation',
+      issueNumber: 102,
+    })
+
+    const evidenceDir = join(tmpDir, '.claude', 'verification-evidence')
+    mkdirSync(evidenceDir, { recursive: true })
+    writeFileSync(
+      join(evidenceDir, 'vp-p1-102.json'),
+      JSON.stringify({
+        phaseId: 'p1',
+        issueNumber: 102,
+        timestamp: new Date().toISOString(),
+        allStepsPassed: false,
+        steps: [
+          { id: 'VP1', passed: true },
+          { id: 'VP2', passed: false },
+        ],
+      }),
+    )
+
+    const output = await captureCanExit(['--json', `--session=${process.env.CLAUDE_SESSION_ID}`])
+    const result = JSON.parse(output) as { canExit: boolean; reasons: string[] }
+
+    const blockedByVp = result.reasons.some((r) => r.includes('failing steps'))
+    expect(blockedByVp).toBe(true)
   })
 
   it('checkVerificationEvidence: blocks when evidence timestamp predates latest commit', async () => {

@@ -219,6 +219,73 @@ function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string
 }
 
 /**
+ * Check that VP (Verification Plan) evidence files exist for all spec phases.
+ * Reads .kata/verification-evidence/vp-*-{issueNumber}.json files.
+ * Each file must have allStepsPassed: true and a timestamp newer than the latest commit.
+ */
+function checkVpEvidence(issueNumber: number): { passed: boolean; reason?: string } {
+  try {
+    const projectRoot = findProjectDir()
+    const evidenceDir = getVerificationDir(projectRoot)
+    if (!existsSync(evidenceDir)) {
+      return {
+        passed: false,
+        reason: `Verification Plan has not been executed. Run the VERIFY step for each phase.`,
+      }
+    }
+
+    const vpFiles = readdirSync(evidenceDir)
+      .filter((f) => f.startsWith('vp-') && f.endsWith(`-${issueNumber}.json`))
+      .map((f) => join(evidenceDir, f))
+
+    if (vpFiles.length === 0) {
+      return {
+        passed: false,
+        reason: `No VP evidence files found. Run the VERIFY step for each implementation phase.`,
+      }
+    }
+
+    const latestCommit = getLatestCommitTimestamp()
+
+    for (const file of vpFiles) {
+      try {
+        const content = JSON.parse(readFileSync(file, 'utf-8'))
+        const phaseId = content.phaseId ?? file
+
+        if (content.allStepsPassed !== true) {
+          return {
+            passed: false,
+            reason: `VP for phase ${phaseId} has failing steps. Fix implementation and re-run VERIFY.`,
+          }
+        }
+
+        if (latestCommit && content.timestamp) {
+          const evidenceDate = new Date(content.timestamp as string)
+          if (!isNaN(evidenceDate.getTime()) && evidenceDate < latestCommit) {
+            return {
+              passed: false,
+              reason: `VP evidence for phase ${phaseId} is stale (predates latest commit). Re-run VERIFY.`,
+            }
+          }
+        }
+      } catch {
+        return {
+          passed: false,
+          reason: `VP evidence file unreadable. Re-run VERIFY for issue #${issueNumber}.`,
+        }
+      }
+    }
+
+    return { passed: true }
+  } catch {
+    return {
+      passed: false,
+      reason: `Verification Plan has not been executed. Run the VERIFY step for each phase.`,
+    }
+  }
+}
+
+/**
  * Check that at least one new test function was added in this session vs diff_base.
  * Reads project.diff_base and project.test_file_pattern from wm.yaml.
  */
@@ -330,6 +397,14 @@ function validateCanExit(
     const testsCheck = checkTestsPass(issueNumber)
     if (!testsCheck.passed && testsCheck.reason) {
       reasons.push(testsCheck.reason)
+    }
+  }
+
+  // ── verification_plan_executed ──
+  if (checks.has('verification_plan_executed') && issueNumber) {
+    const vpCheck = checkVpEvidence(issueNumber)
+    if (!vpCheck.passed && vpCheck.reason) {
+      reasons.push(vpCheck.reason)
     }
   }
 

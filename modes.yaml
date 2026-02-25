@@ -85,6 +85,7 @@ modes:
       - verification
       - tests_pass
       - feature_tests_added
+      - verification_plan_executed
     intent_keywords:
       - "implement"
       - "build"
