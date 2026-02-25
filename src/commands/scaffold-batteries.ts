@@ -2,7 +2,7 @@
 // Called by `kata setup --batteries` after base setup completes.
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { getPackageRoot, getUserConfigDir, getProjectTemplatesDir, getProjectInterviewsPath } from '../session/lookup.js'
+import { getPackageRoot, getUserConfigDir, getProjectTemplatesDir, getProjectInterviewsPath, getProjectSubphasePatternsPath } from '../session/lookup.js'
 
 export interface BatteriesResult {
   templates: string[]
@@ -10,6 +10,7 @@ export interface BatteriesResult {
   specTemplates: string[]
   githubTemplates: string[]
   interviews: string[]
+  subphasePatterns: string[]
   skipped: string[]
   updated: string[]
 }
@@ -70,6 +71,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
     specTemplates: [],
     githubTemplates: [],
     interviews: [],
+    subphasePatterns: [],
     skipped: [],
     updated: [],
   }
@@ -148,6 +150,24 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
       mkdirSync(join(interviewsDest, '..'), { recursive: true })
       copyFileSync(interviewsSrc, interviewsDest)
       result.interviews.push('interviews.yaml')
+    }
+  }
+
+  // subphase-patterns.yaml → .kata/subphase-patterns.yaml (or .claude/workflows/subphase-patterns.yaml)
+  const subphaseSrc = join(batteryRoot, 'subphase-patterns.yaml')
+  const subphaseDest = getProjectSubphasePatternsPath(projectRoot)
+  if (existsSync(subphaseSrc)) {
+    if (existsSync(subphaseDest)) {
+      if (update) {
+        copyFileSync(subphaseSrc, subphaseDest)
+        result.updated.push('subphase-patterns.yaml')
+      } else {
+        result.skipped.push('subphase-patterns.yaml')
+      }
+    } else {
+      mkdirSync(join(subphaseDest, '..'), { recursive: true })
+      copyFileSync(subphaseSrc, subphaseDest)
+      result.subphasePatterns.push('subphase-patterns.yaml')
     }
   }
 

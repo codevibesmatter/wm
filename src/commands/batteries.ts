@@ -62,7 +62,8 @@ export async function batteries(args: string[]): Promise<void> {
     result.agents.length +
     result.specTemplates.length +
     result.githubTemplates.length +
-    result.interviews.length
+    result.interviews.length +
+    result.subphasePatterns.length
   const updatedCount = result.updated.length
 
   // On --update, also refresh hook registrations in .claude/settings.json
@@ -119,6 +120,12 @@ export async function batteries(args: string[]): Promise<void> {
     const kd = getKataDir(projectRoot)
     const intDir = kd === '.kata' ? '.kata' : '.claude/workflows'
     process.stdout.write(`\nInterview config → ${intDir}/interviews.yaml\n`)
+  }
+  if (result.subphasePatterns.length > 0) {
+    const { getKataDir } = await import('../session/lookup.js')
+    const kd = getKataDir(projectRoot)
+    const spDir = kd === '.kata' ? '.kata' : '.claude/workflows'
+    process.stdout.write(`\nSubphase patterns → ${spDir}/subphase-patterns.yaml\n`)
   }
   if (result.updated.length > 0) {
     process.stdout.write(`\nUpdated (overwritten):\n`)
