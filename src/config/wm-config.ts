@@ -25,6 +25,7 @@ export interface WmConfig {
     spec_review?: boolean
     code_review?: boolean
     code_reviewer?: string | null // 'codex' | 'gemini' | null
+    spec_reviewer?: string | null // provider for spec reviews (default: providers.default)
   }
   // Mode configuration (project overrides per mode)
   mode_config?: Record<string, unknown>

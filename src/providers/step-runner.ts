@@ -67,6 +67,7 @@ function resolveProvider(providerRef: string): string {
     const key = match[1]
     if (key === 'default') return config.providers?.default ?? 'claude'
     if (key === 'code_reviewer') return config.reviews?.code_reviewer ?? 'claude'
+    if (key === 'spec_reviewer') return config.reviews?.spec_reviewer ?? config.providers?.default ?? 'claude'
     if (key === 'judge_provider') return config.providers?.judge_provider ?? 'claude'
     return providerRef // unrecognized key, pass through
   }
