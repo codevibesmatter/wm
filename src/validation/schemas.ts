@@ -55,6 +55,8 @@ export const subphasePatternSchema = z.object({
   active_form: z.string().min(1, 'Active form cannot be empty'),
   labels: z.array(z.string()).default([]),
   depends_on_previous: z.boolean().optional(),
+  instruction: z.string().optional(),
+  agent: agentStepConfigSchema.optional(),
 })
 
 /**

@@ -79,6 +79,22 @@ export function buildSpecTasks(
           dependsOn.push(prevPhaseLastTaskId)
         }
 
+        // Build instruction from pattern: explicit instruction template + agent config
+        let instruction: string | undefined
+        if (patternItem.instruction) {
+          instruction = applyPlaceholders(patternItem.instruction, {
+            taskSummary,
+            phaseName,
+            phaseLabel,
+          }).replace(/{issue}/g, String(issueNum))
+        if (patternItem.agent) {
+          const agentLine = `\nRun: kata review --prompt=${patternItem.agent.prompt}` +
+            (patternItem.agent.provider ? ` --provider=${patternItem.agent.provider}` : '') +
+            (patternItem.agent.model ? ` --model=${patternItem.agent.model}` : '') +
+            (patternItem.agent.gate ? ` (gate: score >= ${patternItem.agent.threshold ?? 75})` : '')
+          instruction = (instruction ?? '') + agentLine
+        }
+
         tasks.push({
           id: taskId,
           title: fullTitle,
@@ -86,6 +102,7 @@ export function buildSpecTasks(
           depends_on: dependsOn,
           completedAt: null,
           reason: null,
+          instruction,
         })
 
         // biome-ignore lint/suspicious/noConsole: intentional CLI output
