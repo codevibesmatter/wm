@@ -25,6 +25,7 @@ import { setup } from './commands/setup.js'
 import { teardown } from './commands/teardown.js'
 import { hook } from './commands/hook.js'
 import { batteries } from './commands/batteries.js'
+import { projects } from './commands/projects.js'
 import { config as configCommand } from './commands/config.js'
 import { modes } from './commands/modes.js'
 import { verifyPhase } from './commands/verify-phase.js'
@@ -160,6 +161,10 @@ async function main() {
         await reviewCommand(commandArgs)
         break
 
+      case 'projects':
+        await projects(commandArgs)
+        break
+
       case 'hook':
         await hook(commandArgs)
         break
@@ -222,6 +227,7 @@ Usage:
   kata providers [list|setup] [--json]             Check/configure agent providers
   kata review --prompt=<name> [--provider=P]       Run ad-hoc agent review
   kata review --list                               List available prompt templates
+  kata projects <subcommand> [options]             Multi-project management
   kata teardown [--yes] [--all] [--dry-run]      Remove kata from a project
   kata hook <name>                               Dispatch hook event (for settings.json)
   kata --version                                 Show version

@@ -1,0 +1,43 @@
+// kata projects - Multi-project management dispatcher
+import { initManager } from './projects/init-manager.js'
+import { listProjects } from './projects/list.js'
+import { addProject } from './projects/add.js'
+import { removeProject } from './projects/remove.js'
+
+const SUBCOMMANDS: Record<string, (args: string[]) => Promise<void>> = {
+  'init-manager': initManager,
+  list: listProjects,
+  add: addProject,
+  remove: removeProject,
+}
+
+function printUsage(): void {
+  // biome-ignore lint/suspicious/noConsole: CLI output
+  console.error(`Usage: kata projects <subcommand> [options]
+
+Subcommands:
+  init-manager [--force]                    Initialize manager at ~/.kata/manager/
+  list [--json] [--refresh]                 List registered projects
+  add <path> [--alias=<name>]               Add a project to the registry
+  remove <alias-or-path>                    Remove a project from the registry
+
+Examples:
+  kata projects init-manager
+  kata projects list
+  kata projects add /path/to/project --alias=myproj
+  kata projects remove myproj
+`)
+}
+
+export async function projects(args: string[]): Promise<void> {
+  const sub = args[0]
+  const handler = sub ? SUBCOMMANDS[sub] : undefined
+
+  if (!handler) {
+    printUsage()
+    process.exitCode = 1
+    return
+  }
+
+  await handler(args.slice(1))
+}
