@@ -12,6 +12,28 @@ export const phaseTaskConfigSchema = z.object({
 })
 
 /**
+ * Schema for an external agent step configuration.
+ * When a step has an `agent` field, the step runner invokes
+ * the specified provider with the named prompt and assembled context.
+ */
+export const agentStepConfigSchema = z.object({
+  /** Provider name: 'claude' | 'gemini' | 'codex' or a wm.yaml variable like '${providers.default}' */
+  provider: z.string().min(1, 'Agent provider cannot be empty'),
+  /** Override model for the provider. Optional — uses provider default. */
+  model: z.string().optional(),
+  /** Prompt template name (loads from src/providers/prompts/{name}.md) */
+  prompt: z.string().min(1, 'Agent prompt name cannot be empty'),
+  /** Named context sources to assemble into the prompt */
+  context: z.array(z.string()).optional(),
+  /** Output artifact path (relative to project root). Supports {date} placeholder. */
+  output: z.string().optional(),
+  /** If true, blocks next step until score meets threshold */
+  gate: z.boolean().optional(),
+  /** Minimum score (0-100) to pass the gate. Default: 75. */
+  threshold: z.number().min(0).max(100).optional(),
+})
+
+/**
  * Schema for a step within a phase
  * Steps are individual trackable units within a phase (e.g., interview rounds)
  */
@@ -19,6 +41,7 @@ export const phaseStepSchema = z.object({
   id: z.string().min(1, 'Step ID cannot be empty'),
   title: z.string().min(1, 'Step title cannot be empty'),
   instruction: z.string().optional(),
+  agent: agentStepConfigSchema.optional(),
 })
 
 /**
@@ -83,6 +106,7 @@ export const evidenceTypeSchema = z.object({
 export const evidenceTypesSchema = z.record(z.string(), evidenceTypeSchema)
 
 // Type exports
+export type AgentStepConfig = z.infer<typeof agentStepConfigSchema>
 export type PhaseTaskConfig = z.infer<typeof phaseTaskConfigSchema>
 export type PhaseStep = z.infer<typeof phaseStepSchema>
 export type SubphasePattern = z.infer<typeof subphasePatternSchema>

@@ -153,6 +153,14 @@ export function getProjectWmConfigPath(projectRoot?: string): string {
 }
 
 /**
+ * Get path to project interviews.yaml
+ */
+export function getProjectInterviewsPath(projectRoot?: string): string {
+  const root = projectRoot ?? findProjectDir()
+  return resolveKataPath(root, 'interviews.yaml')
+}
+
+/**
  * Get path to verification evidence directory
  */
 export function getVerificationDir(projectRoot?: string): string {

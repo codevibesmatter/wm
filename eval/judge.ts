@@ -1,18 +1,15 @@
 /**
  * LLM-as-judge for eval transcripts.
  *
- * Feeds the transcript + template + enter output to an agent provider.
- * The agent writes a free-form pipeline audit.
- * We extract three values: agent score, system score, verdict.
- * The full review is saved as markdown.
+ * Delegates to `runAgentStep` for provider invocation, env cleaning, and
+ * prompt loading. Judge-specific concerns (JSONL transcript summarization,
+ * dual-score extraction, verdict logic, scenario-named artifacts) remain here.
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { AgentProvider } from '../src/providers/types.js'
-import { getProvider } from '../src/providers/index.js'
-import { loadPrompt } from '../src/providers/prompt.js'
+import { runAgentStep } from '../src/providers/step-runner.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -40,20 +37,7 @@ export interface JudgeOptions {
   model?: string
 }
 
-// ─── Prompt Construction ─────────────────────────────────────────────────────
-
-function loadReviewPrompt(): string {
-  // Try saved prompt from providers/prompts/ first, fall back to local
-  try {
-    return loadPrompt('transcript-review')
-  } catch {
-    const promptPath = join(__dirname, 'prompts', 'transcript-review.md')
-    if (!existsSync(promptPath)) {
-      throw new Error(`Review prompt not found: ${promptPath}`)
-    }
-    return readFileSync(promptPath, 'utf-8')
-  }
-}
+// ─── Transcript Summarization ───────────────────────────────────────────────
 
 function summarizeTranscript(transcriptPath: string, maxLines: number): string {
   if (!existsSync(transcriptPath)) {
@@ -103,28 +87,16 @@ function summarizeTranscript(transcriptPath: string, maxLines: number): string {
   return events.join('\n')
 }
 
-function buildJudgePrompt(options: JudgeOptions): string {
-  const reviewPrompt = loadReviewPrompt()
-  const template = existsSync(options.templatePath)
-    ? readFileSync(options.templatePath, 'utf-8')
-    : '[Template not found]'
+// ─── Context Assembly ───────────────────────────────────────────────────────
+
+function buildJudgeContext(options: JudgeOptions): string {
   const transcript = summarizeTranscript(
     options.transcriptPath,
     options.maxTranscriptLines ?? 500,
   )
   const enterOutput = options.enterOutput ?? '[No enter output captured]'
 
-  return `${reviewPrompt}
-
----
-
-## Mode Template
-
-\`\`\`markdown
-${template}
-\`\`\`
-
-## Enter Output (what the agent was told on mode entry)
+  return `## Enter Output (what the agent was told on mode entry)
 
 \`\`\`
 ${enterOutput}
@@ -165,33 +137,29 @@ export function extractVerdict(text: string): Verdict {
 // ─── Judge Execution ─────────────────────────────────────────────────────────
 
 export async function judgeTranscript(options: JudgeOptions): Promise<JudgeResult> {
-  const prompt = buildJudgePrompt(options)
   const providerName = options.providerName ?? 'claude'
 
-  // Clean env so agent subprocesses aren't blocked by nested-session guards
-  const cleanEnv: Record<string, string> = {}
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value === undefined) continue
-    if (key.startsWith('CLAUDECODE')) continue
-    if (key === 'CLAUDE_CODE_ENTRYPOINT') continue
-    if (key === 'CLAUDE_PROJECT_DIR') continue
-    cleanEnv[key] = value
-  }
-
-  const provider: AgentProvider = getProvider(providerName)
-  const review = await provider.run(prompt, {
-    cwd: dirname(options.transcriptPath),
-    model: options.model,
-    env: cleanEnv,
-  })
+  const result = await runAgentStep(
+    {
+      provider: providerName,
+      prompt: 'transcript-review',
+      context: ['template'],
+      model: options.model,
+    },
+    {
+      cwd: dirname(options.transcriptPath),
+      templatePath: options.templatePath,
+      extraContext: buildJudgeContext(options),
+    },
+  )
 
   return {
-    agentScore: extractScore(review, 'AGENT_SCORE'),
-    systemScore: extractScore(review, 'SYSTEM_SCORE'),
-    verdict: extractVerdict(review),
-    review,
-    provider: providerName,
-    model: options.model ?? provider.defaultModel,
+    agentScore: extractScore(result.output, 'AGENT_SCORE'),
+    systemScore: extractScore(result.output, 'SYSTEM_SCORE'),
+    verdict: extractVerdict(result.output),
+    review: result.output,
+    provider: result.provider,
+    model: result.model,
   }
 }
 

@@ -400,12 +400,10 @@ export async function handleTaskEvidence(_input: Record<string, unknown>): Promi
  * Structured hook log entry. All hooks write to a single
  * {sessionsDir}/{sessionId}/hooks.log.jsonl file.
  */
-interface HookLogEntry {
+interface HookLogEntry extends Record<string, unknown> {
   ts: string
   hook: string
   decision: 'allow' | 'block' | 'deny' | 'context'
-  /** Extra data: reasons, tool_name, note, etc. */
-  [key: string]: unknown
 }
 
 /**
@@ -419,7 +417,7 @@ export function logHook(sessionId: string, entry: Omit<HookLogEntry, 'ts'>): voi
     const sessionsDir = getSessionsDir(projectDir)
     const sessionDir = join(sessionsDir, sessionId)
     mkdirSync(sessionDir, { recursive: true })
-    const full: HookLogEntry = { ts: new Date().toISOString(), ...entry }
+    const full = { ...entry, ts: new Date().toISOString() } as HookLogEntry
     appendFileSync(join(sessionDir, 'hooks.log.jsonl'), `${JSON.stringify(full)}\n`)
   } catch {
     // Best-effort logging — never fail the hook

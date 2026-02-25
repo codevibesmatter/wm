@@ -48,7 +48,6 @@ phases:
       - "AskUserQuestion: Research files path? (default: planning/research)"
       - "AskUserQuestion: Session retention days? (default: 7)"
       - "AskUserQuestion: Install strict mode hooks (PreToolUse gates)? (default: no)"
-      - "AskUserQuestion: Customize planning interview categories? (see ## Interview Customization below)"
   - id: p4
     name: "GitHub Setup"
     description: "Verify gh CLI is installed and authenticated"
@@ -102,7 +101,6 @@ You are the agent running the kata setup interview. Ask questions, collect answe
 - `.claude/workflows/templates/` — 6 full mode templates with GitHub integration
 - `.claude/agents/` — 5 Claude Code sub-agent definitions
 - `planning/spec-templates/` — Feature, epic, and bug spec templates
-- `.kata/interviews.yaml` — Planning interview categories (customizable)
 
 ## Batteries-Included Starter Content
 
@@ -235,41 +233,6 @@ AskUserQuestion(questions=[{
 
 **If Custom:** continue through p2 (Project Discovery) and p3 (Custom Configuration). At the end of p3, ask the batteries question to decide whether to install starter content.
 
-## Interview Customization
-
-In p3 (custom path only), ask about planning interview categories:
-
-```
-AskUserQuestion(questions=[{
-  question: "Which interview categories should planning mode use for this project?",
-  header: "Categories",
-  options: [
-    {label: "Requirements", description: "User journey, happy path, scope, edge cases, scale"},
-    {label: "Architecture", description: "Integration points, error handling, performance"},
-    {label: "Testing", description: "Test scenarios, error paths, test types"}
-  ],
-  multiSelect: true
-}])
-```
-
-Then ask about UI design separately:
-
-```
-AskUserQuestion(questions=[{
-  question: "Does this project have a UI? (enables design interview category)",
-  header: "UI Design",
-  options: [
-    {label: "Yes — include design interviews", description: "Layout, components, visual states"},
-    {label: "No — backend only", description: "Skip design category entirely"}
-  ],
-  multiSelect: false
-}])
-```
-
-**If all defaults kept:** No action needed — `batteries/interviews.yaml` has all 4 categories.
-
-**If user deselected categories:** Write a custom `.kata/interviews.yaml` (or `.claude/workflows/interviews.yaml` for old layout) containing only the selected categories. Copy the selected category definitions from the batteries file.
-
 ## Write Configuration Command
 
 After collecting answers through the interview, run **one** of these commands in p5 based on what the user chose:
@@ -290,45 +253,31 @@ Then run `kata doctor` (p6) to verify everything is correct.
 
 ## External Review Setup
 
-When p3 asks "Enable code review? Which reviewer?", first run `kata providers list` to detect which CLIs are installed:
+When p3 asks "Enable code review? Which reviewer?":
 
-```bash
-kata providers list
+### `codex` — Claude Code sub-agent review
+Uses the batteries `review-agent` sub-agent (no external tool needed). The orchestrator spawns a `review-agent` after each implementation phase:
 ```
-
-Only offer providers whose CLI is detected. Then ask:
-
+Task(subagent_type="review-agent", prompt="Review git diff for phase P2.1 of spec planning/specs/123-*.md")
 ```
-AskUserQuestion(questions=[{
-  question: "Which agent providers do you want to configure?",
-  header: "Providers",
-  options: [
-    {label: "Claude only", description: "Default — uses Claude Code agent SDK"},
-    {label: "Claude + Gemini", description: "Add Google Gemini CLI as reviewer/judge"},
-    {label: "Claude + Codex", description: "Add OpenAI Codex CLI as reviewer/judge"},
-    {label: "All three", description: "Claude + Gemini + Codex"},
-    {label: "Skip provider setup", description: "Configure later with: kata providers setup"}
-  ],
-  multiSelect: false
-}])
+Set in `wm.yaml`:
+```yaml
+reviews:
+  code_reviewer: codex
 ```
-
-After selection, run `kata providers setup` to write config to wm.yaml.
-
-### `codex` — OpenAI Codex CLI review
-Requires the Codex CLI installed:
-```bash
-npm install -g @openai/codex
-```
-Uses `codex exec --sandbox read-only` for code review with full agent capabilities.
 
 ### `gemini` — Google Gemini CLI review
 Requires the Gemini CLI installed and authenticated:
 ```bash
-npm install -g @google/gemini-cli
+npm install -g @google/gemini-cli   # or pip install gemini-cli
 gemini auth login
 ```
-Uses `gemini --yolo` for autonomous code review with full agent capabilities.
+Then set in `wm.yaml`:
+```yaml
+reviews:
+  code_reviewer: gemini
+```
+The implementation template will prompt you to run `gemini review` after each phase.
 
 ### `none` — No external review gate
 Implementation phases complete without a review step. Recommended for solo projects or when using PR review instead.

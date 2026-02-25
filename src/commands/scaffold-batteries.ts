@@ -2,13 +2,14 @@
 // Called by `kata setup --batteries` after base setup completes.
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { getPackageRoot, getUserConfigDir, getProjectTemplatesDir } from '../session/lookup.js'
+import { getPackageRoot, getUserConfigDir, getProjectTemplatesDir, getProjectInterviewsPath } from '../session/lookup.js'
 
 export interface BatteriesResult {
   templates: string[]
   agents: string[]
   specTemplates: string[]
   githubTemplates: string[]
+  interviews: string[]
   skipped: string[]
   updated: string[]
 }
@@ -68,6 +69,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
     agents: [],
     specTemplates: [],
     githubTemplates: [],
+    interviews: [],
     skipped: [],
     updated: [],
   }
@@ -127,6 +129,25 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
       mkdirSync(join(projectRoot, '.github'), { recursive: true })
       copyFileSync(labelsSrc, labelsDest)
       result.githubTemplates.push('wm-labels.json')
+    }
+  }
+
+  // interviews.yaml → .kata/interviews.yaml (or .claude/workflows/interviews.yaml)
+  const interviewsSrc = join(batteryRoot, 'interviews.yaml')
+  const interviewsDest = getProjectInterviewsPath(projectRoot)
+  if (existsSync(interviewsSrc)) {
+    if (existsSync(interviewsDest)) {
+      if (update) {
+        copyFileSync(interviewsSrc, interviewsDest)
+        result.updated.push('interviews.yaml')
+      } else {
+        result.skipped.push('interviews.yaml')
+      }
+    } else {
+      // Ensure parent directory exists (resolveKataPath may point to .kata/ or .claude/workflows/)
+      mkdirSync(join(interviewsDest, '..'), { recursive: true })
+      copyFileSync(interviewsSrc, interviewsDest)
+      result.interviews.push('interviews.yaml')
     }
   }
 
