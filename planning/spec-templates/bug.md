@@ -74,33 +74,3 @@ phases:
 ## Regression Test
 
 {Describe a test that would catch this bug if it regressed. Add to test file: {path}.}
-
-## Implementation Phases
-
-### Phase 1: Reproduce & Investigate
-
-Tasks:
-- Reproduce bug and document exact steps
-- Identify root cause (file:line)
-
-test_cases:
-- id: tc1
-  description: "Reproduction: bug is confirmed reproducible"
-  command: "{command that triggers the bug}"
-  expected_exit: 1
-
-### Phase 2: Fix
-
-Tasks:
-- Implement minimal targeted fix
-- Add regression test
-
-test_cases:
-- id: tc1
-  description: "Fix: original bug no longer occurs"
-  command: "{command that previously triggered the bug}"
-  expected_exit: 0
-- id: tc2
-  description: "Regression: existing tests still pass"
-  command: "{test command}"
-  expected_exit: 0

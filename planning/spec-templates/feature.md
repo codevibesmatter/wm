@@ -13,11 +13,19 @@ phases:
     tasks:
       - "{Task 1}"
       - "{Task 2}"
+    test_cases:
+      - id: "{test-id}"
+        description: "{what this test verifies}"
+        type: "unit | integration | smoke"
   - id: p2
     name: "{Phase 2 Name}"
     tasks:
       - "{Task 1}"
       - "{Task 2}"
+    test_cases:
+      - id: "{test-id}"
+        description: "{what this test verifies}"
+        type: "unit | integration | smoke"
 ---
 
 # {Feature Title}
@@ -87,43 +95,34 @@ Explicitly out of scope for this feature:
 
 See YAML frontmatter `phases:` above. Each phase should be 1-4 hours of focused work.
 
-### Phase 1: {Phase 1 Name}
+## Verification Strategy
 
-Tasks:
-- {Task 1}
-- {Task 2}
+### Test Infrastructure
+{What testing setup exists or needs to be created. E.g., "vitest with jsdom — config exists at vitest.config.ts" or "No test config — create vitest.config.ts in Phase 1."}
 
-test_cases:
-- id: tc1
-  description: "{What this test verifies}"
-  command: "{Command to run}"
-  expected_exit: 0
-- id: tc2
-  description: "{Edge case or error path}"
-  command: "{Command}"
-  expected_exit: 1
+### Build Verification
+{The correct command to verify the build. Note any framework-specific caveats. E.g., "Use `npm run build` (not bare `tsc`) because route types are generated at build time."}
 
-Verification:
-- Feature works as expected
-- Types compile (`npm run typecheck`)
-- All test_cases pass
+## Implementation Hints
 
-### Phase 2: {Phase 2 Name}
+### Dependencies
+```bash
+npm install {package1} {package2}
+```
 
-Tasks:
-- {Task 1}
-- {Task 2}
+### Key Imports
+| Module | Import | Used For |
+|--------|--------|----------|
+| `{package/subpath}` | `{ named }` | {purpose} |
 
-test_cases:
-- id: tc1
-  description: "{What this test verifies}"
-  command: "{Command to run}"
-  expected_exit: 0
+### Code Patterns
+{2-5 code snippets showing core integration patterns — initialization, wiring, key API usage.}
 
-Verification:
-- Feature works as expected
-- Types compile (`npm run typecheck`)
-- All test_cases pass
+### Gotchas
+- {Known issue, non-obvious behavior, or common mistake with this library/framework}
+
+### Reference Docs
+- [{title}]({url}) — {what it covers}
 
 ---
 

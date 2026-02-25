@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/kata\" hook session-start"
+            "command": "\"/home/ubuntu/.local/bin/kata\" hook session-start"
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/kata\" hook user-prompt"
+            "command": "\"/home/ubuntu/.local/bin/kata\" hook user-prompt"
           }
         ]
       }
@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/kata\" hook stop-conditions",
+            "command": "\"/home/ubuntu/.local/bin/kata\" hook stop-conditions",
             "timeout": 30
           }
         ]
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/kata\" hook mode-gate",
+            "command": "\"/home/ubuntu/.local/bin/kata\" hook mode-gate",
             "timeout": 10
           }
         ]
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/kata\" hook task-deps",
+            "command": "\"/home/ubuntu/.local/bin/kata\" hook task-deps",
             "timeout": 10
           }
         ]
@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/kata\" hook task-evidence",
+            "command": "\"/home/ubuntu/.local/bin/kata\" hook task-evidence",
             "timeout": 10
           }
         ]
