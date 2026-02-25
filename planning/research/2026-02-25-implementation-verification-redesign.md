@@ -262,14 +262,157 @@ P3.4: Stop conditions enforce: tests_pass + verification + committed + pushed + 
 
 ---
 
-## Open Questions
+---
 
-1. **Integration test bootstrapping**: For projects without existing integration tests, who writes the first ones? The implementing agent? A separate setup phase? A template-provided scaffold?
+## Part 7: The Real Insight — Verification Plan in the Spec, Verification Agent in the Workflow
 
-2. **`at verify` availability**: Not all features have browser-observable behaviors. Backend-only work (like the #1533 COI cutover) has no UI to screenshot. Can `at verify` be adapted for API verification? Or is a separate API smoke test mechanism needed?
+Everything above misses the fundamental point. The best results in agentic coding come when **the agent actually runs the code against real services, reads real errors, and reacts to them**. Not unit tests. Not LLM reviews. Actually hitting APIs, navigating browsers, seeing real stack traces.
 
-3. **Performance**: Adding integration tests + browser verification + code review to every phase will significantly increase implementation time. Is there a tiered approach (quick checks per phase, full verification only at close)?
+### The problem restated
 
-4. **Template portability**: The redesigned pipeline assumes `vitest-pool-workers` and `at verify` exist. How do projects without this infrastructure benefit? Should kata-wm ship with integration test scaffolds for common stacks?
+The current system has two gaps that compound:
 
-5. **False positive rate**: If verification is too strict and blocks exit frequently, agents will find new escape routes. What's the right calibration between enforcement and usability?
+1. **Planning doesn't define HOW to verify** — The spec has abstract behaviors ("Queue message delivered → workflow execution record appears in DB") but not executable verification steps. The implementing agent is left to decide what "verify" means, and it chooses: write unit tests with mocks.
+
+2. **Implementation verification is self-referential** — The same agent (or same context) that wrote the code also writes the tests and judges whether it works. This is structurally incapable of catching integration bugs because the agent's mental model of the system IS the bug.
+
+### The fix: two changes, two templates
+
+#### Change 1: Planning template requires an executable Verification Plan
+
+The spec's Verification Strategy section currently says things like:
+```
+Verify: Queue message delivered → workflow execution record appears in DB
+```
+
+It should instead require concrete, executable verification steps:
+```
+## Verification Plan
+
+### VP1: Queue triggers workflow execution
+Steps:
+1. Start dev server: ./scripts/dev/setup.sh
+2. POST http://localhost:8787/api/queues/coi-extraction
+   Body: {"coi_id": "test-1", "batch_id": "b-1", "org_id": "org-1", ...}
+   Expect: 200 OK
+3. Wait 30s, then: GET http://localhost:8787/api/workflow-runs?coi_id=test-1
+   Expect: workflow_run record with status "completed"
+4. GET http://localhost:8787/api/coi/test-1
+   Expect: vendor_name is not null, confidence > 0
+
+### VP2: AI extraction produces correct field mapping
+Steps:
+1. GET http://localhost:8787/api/coi/test-1
+2. Check: extracted_vendor_name matches known test PDF vendor
+3. Check: status is "approved" (confidence > 70) or "review_required" (confidence < 70)
+```
+
+For UI features:
+```
+### VP3: Filter panel renders correctly
+Steps:
+1. Navigate to http://localhost:3000/coi/list
+2. Click "Add Filter" button
+3. Screenshot: filter dropdown should show vendor, status, date fields
+4. Select "vendor", type "Acme"
+5. Screenshot: table should filter to Acme rows only
+```
+
+The planning interview already asks about testing strategy. The change is making the spec writer produce **executable steps** (curl commands, browser navigation, expected responses) not abstract descriptions.
+
+#### Change 2: Implementation subphase pattern gets a verification agent step
+
+Current subphase pattern (`impl-verify`):
+```yaml
+steps:
+  - id_suffix: impl
+    title_template: "IMPL - {task_summary}"
+    labels: [impl]
+  - id_suffix: verify
+    title_template: "VERIFY - {phase_name}"
+    labels: [verify]
+    depends_on_previous: true
+    instruction: "Run verify-phase for {phase_name}"
+```
+
+The VERIFY step currently runs `kata verify-phase` which checks build/typecheck/tests — the process gates. It should instead (or additionally) **spawn a fresh verification agent** that executes the spec's Verification Plan steps.
+
+Proposed pattern (e.g., `impl-test-verify`):
+```yaml
+steps:
+  - id_suffix: impl
+    title_template: "IMPL - {task_summary}"
+    labels: [impl]
+  - id_suffix: test
+    title_template: "TEST - {phase_name}"
+    labels: [test]
+    depends_on_previous: true
+    instruction: "Run verify-phase for {phase_name}: kata verify-phase {phase_label} --issue={issue}"
+  - id_suffix: verify
+    title_template: "VERIFY - {phase_name}"
+    labels: [verify, agent-verify]
+    depends_on_previous: true
+    instruction: |
+      Spawn a FRESH verification agent with ONLY:
+      - The spec's Verification Plan section for this phase
+      - Access to the running dev server
+      - Access to curl/browser tools
+
+      The agent does NOT see implementation code. It executes the
+      verification plan steps literally, reports pass/fail for each,
+      and returns real error output on failure.
+
+      Task(subagent_type="general-purpose", prompt="
+        ROLE: Verification Agent
+        You verify that code actually works by executing concrete steps.
+        You do NOT look at source code. You only interact with the running system.
+
+        VERIFICATION PLAN:
+        {paste VP steps from spec for this phase}
+
+        Execute each step. For each:
+        - Run the command/navigation exactly as specified
+        - Compare actual output to expected output
+        - If mismatch: report the EXACT error (status code, response body, screenshot)
+        - If match: report PASS
+
+        Return a structured result:
+        - Step 1: PASS/FAIL + actual vs expected
+        - Step 2: PASS/FAIL + actual vs expected
+        ...
+      ")
+```
+
+### Why this works
+
+1. **The verification agent has fresh context** — no implementation mental model polluting its judgment. It can't rationalize failures.
+
+2. **It hits real endpoints** — not mocked services. If the VariableResolver resolves `{{input.vendorName}}` to undefined, the API returns null, and the verification agent reports "expected vendor_name not null, got null." That's an unfakeable signal.
+
+3. **The verification plan is defined in planning** — before the implementing agent exists. The spec author (human-guided) decides what "works" means. The implementing agent can't redefine it.
+
+4. **Failures produce actionable errors** — real stack traces, real 500 responses, real "field is null" reports. The implementation agent (or a fresh impl turn) gets concrete things to fix, not abstract test failures.
+
+5. **It's the pattern that already works** — the user observed that the best results come from agents that manually hit APIs and react to real errors. This just formalizes that pattern into the workflow.
+
+### What this requires from kata-wm
+
+1. **Planning template change**: The spec-writer agent prompt needs to produce executable Verification Plan steps, not abstract descriptions. The interview step for testing strategy should guide toward "how will you prove this works against the running system?"
+
+2. **New subphase pattern**: `impl-test-verify` with 3 steps instead of 2. The TEST step runs the existing process gates (build, typecheck, unit tests). The VERIFY step spawns a fresh agent that executes the verification plan.
+
+3. **Verification plan extraction**: The task-factory needs to extract VP steps from the spec and inject them into the VERIFY task's agent prompt. This is similar to how it already extracts phase tasks from spec YAML.
+
+4. **Dev server prerequisite**: The verification agent needs a running dev server. P0 (Baseline) already starts it. The system needs to ensure it stays running through the VERIFY steps — or the VERIFY agent starts it itself.
+
+### Open questions
+
+1. **Backend-only verification**: The #1533 COI cutover is a queue consumer → workflow engine pipeline with no UI. Verification is curl commands against API endpoints. The dev server needs to be running with queue processing enabled. Is this always available locally?
+
+2. **Test data setup**: VP steps assume test data exists (e.g., a test PDF in R2, a test org in the database). Who sets this up? A fixture step in the verification plan? A shared test seed?
+
+3. **Verification plan granularity**: One VP per behavior? Per phase? Per the whole spec? Probably per-phase (matching the implementation phases), with a full integration VP at close time.
+
+4. **Failure loop**: When the verification agent reports failures, who fixes them? The original impl agent (resumed)? A fresh impl agent? The orchestrator? Probably: report failures back to orchestrator, orchestrator spawns a new impl-agent turn with the specific error to fix.
+
+5. **When verification is impossible locally**: Some features genuinely can't be verified locally (third-party webhooks, production-only services). The verification plan should identify these and mark them as "requires staging deployment" — which becomes a P3 (Close) gate rather than a per-phase gate.
