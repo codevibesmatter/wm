@@ -79,18 +79,7 @@ phases:
   - id: p2
     name: Implement
     container: true
-    subphase_pattern:
-      - id_suffix: impl
-        title_template: "IMPL - {task_summary}"
-        todo_template: "Implement {task_summary}"
-        active_form: "Implementing {phase_name}"
-        labels: [impl]
-      - id_suffix: verify
-        title_template: "VERIFY - {phase_name}"
-        todo_template: "Verify {phase_name} implementation"
-        active_form: "Verifying {phase_name}"
-        labels: [verify]
-        depends_on_previous: true
+    subphase_pattern: impl-verify
 
   - id: p3
     name: Close
