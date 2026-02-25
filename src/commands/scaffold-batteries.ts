@@ -2,7 +2,7 @@
 // Called by `kata setup --batteries` after base setup completes.
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { getPackageRoot, getUserConfigDir, getProjectTemplatesDir, getProjectInterviewsPath, getProjectSubphasePatternsPath } from '../session/lookup.js'
+import { getPackageRoot, getUserConfigDir, getProjectTemplatesDir, getProjectInterviewsPath, getProjectSubphasePatternsPath, getProjectVerificationToolsPath } from '../session/lookup.js'
 
 export interface BatteriesResult {
   templates: string[]
@@ -11,6 +11,7 @@ export interface BatteriesResult {
   githubTemplates: string[]
   interviews: string[]
   subphasePatterns: string[]
+  verificationTools: string[]
   skipped: string[]
   updated: string[]
 }
@@ -72,6 +73,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
     githubTemplates: [],
     interviews: [],
     subphasePatterns: [],
+    verificationTools: [],
     skipped: [],
     updated: [],
   }
@@ -168,6 +170,24 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
       mkdirSync(join(subphaseDest, '..'), { recursive: true })
       copyFileSync(subphaseSrc, subphaseDest)
       result.subphasePatterns.push('subphase-patterns.yaml')
+    }
+  }
+
+  // verification-tools.md → .kata/verification-tools.md (or .claude/workflows/verification-tools.md)
+  const vtSrc = join(batteryRoot, 'verification-tools.md')
+  const vtDest = getProjectVerificationToolsPath(projectRoot)
+  if (existsSync(vtSrc)) {
+    if (existsSync(vtDest)) {
+      if (update) {
+        copyFileSync(vtSrc, vtDest)
+        result.updated.push('verification-tools.md')
+      } else {
+        result.skipped.push('verification-tools.md')
+      }
+    } else {
+      mkdirSync(join(vtDest, '..'), { recursive: true })
+      copyFileSync(vtSrc, vtDest)
+      result.verificationTools.push('verification-tools.md')
     }
   }
 

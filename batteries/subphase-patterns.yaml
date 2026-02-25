@@ -31,9 +31,10 @@ subphase_patterns:
           Spawn a FRESH verification agent to execute the spec's Verification Plan.
           The agent should have NO knowledge of the implementation — only the VP steps.
 
-          Before executing, read `batteries/verification-tools.md` for tool reference
-          (dev server management, API testing with curl, browser testing, CLI testing,
-          database checks, and evidence file format).
+          Before executing, read the project's verification tools config:
+          - `.kata/verification-tools.md` (or `.claude/workflows/verification-tools.md`)
+          This file has the project's dev server command, API base URL, auth setup,
+          database access, and key endpoints. Read it FIRST.
 
           ## Verification Plan
 

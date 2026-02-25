@@ -262,9 +262,9 @@ Each VERIFY sub-phase executes the spec's **Verification Plan** against the
 real running system. This is done by a **fresh agent** that has no knowledge
 of the implementation — only the VP steps from the spec.
 
-**Tool reference:** Read `batteries/verification-tools.md` for detailed patterns
-(dev server management, curl-based API testing, browser/WebFetch testing, CLI
-testing, database/state checks, and evidence file format).
+**Tool reference:** Read the project's `.kata/verification-tools.md` (or
+`.claude/workflows/verification-tools.md`) for project-specific setup: dev server
+command, API base URL, auth, database access, and key endpoints.
 
 ### Why a fresh agent?
 
