@@ -1,6 +1,6 @@
 // Workflow guidance generation for enter command
 import { loadWmConfig } from '../../config/wm-config.js'
-import type { PhaseDefinition } from '../../validation/index.js'
+import type { PhaseDefinition, SubphasePattern } from '../../validation/index.js'
 import type { SpecPhase } from '../../yaml/index.js'
 
 export interface PhaseTitle {
@@ -51,6 +51,7 @@ export function buildWorkflowGuidance(
   phaseTitles: PhaseTitle[],
   templatePhases?: PhaseDefinition[],
   taskSystemRules?: string[],
+  resolvedSubphasePattern?: SubphasePattern[],
 ): WorkflowGuidance {
   const requiredTodos: RequiredTodo[] = []
 
@@ -64,7 +65,7 @@ export function buildWorkflowGuidance(
     const containerPhaseNum = containerPhase
       ? Number.parseInt(containerPhase.id.replace('p', ''), 10)
       : 2 // Default to p2 for backwards compatibility
-    const subphasePattern = containerPhase?.subphase_pattern ?? []
+    const subphasePattern = resolvedSubphasePattern ?? (Array.isArray(containerPhase?.subphase_pattern) ? containerPhase.subphase_pattern : [])
 
     // Add orchestration phases BEFORE container (e.g., P0: Baseline, P1: Claim)
     const beforeContainer =
@@ -134,7 +135,7 @@ export function buildWorkflowGuidance(
   } else if (specPhases?.length && templatePhases) {
     // Non-implementation mode with spec phases - use subphase pattern if available
     const containerPhase = templatePhases.find((p) => p.container === true)
-    const subphasePattern = containerPhase?.subphase_pattern ?? []
+    const subphasePattern = resolvedSubphasePattern ?? (Array.isArray(containerPhase?.subphase_pattern) ? containerPhase.subphase_pattern : [])
 
     for (const phase of specPhases) {
       const phaseLabel = phase.id.toUpperCase()

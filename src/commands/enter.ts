@@ -14,6 +14,8 @@ import { generateWorkflowId, generateWorkflowIdForIssue } from '../utils/workflo
 import type { SessionState } from '../state/schema.js'
 import { validatePhases, formatValidationErrors } from '../validation/index.js'
 import { readFullTemplateContent, type SpecPhase } from '../yaml/index.js'
+import { loadSubphasePatterns } from '../config/subphase-patterns.js'
+import type { SubphasePattern } from '../validation/schemas.js'
 
 // Import from modular enter command
 import { buildWorkflowGuidance } from './enter/guidance.js'
@@ -387,6 +389,25 @@ export async function enter(args: string[]): Promise<void> {
   const containerPhase = templatePhases?.find((p) => p.container === true)
   const hasContainerPhase = containerPhase !== undefined
 
+  // Resolve subphase pattern: string name → SubphasePattern[], inline array → as-is
+  let resolvedSubphasePattern: SubphasePattern[] = []
+  if (hasContainerPhase && containerPhase?.subphase_pattern != null) {
+    if (typeof containerPhase.subphase_pattern === 'string') {
+      const patternConfig = await loadSubphasePatterns()
+      const patternName = containerPhase.subphase_pattern
+      const patternDef = patternConfig.subphase_patterns[patternName]
+      if (!patternDef) {
+        const available = Object.keys(patternConfig.subphase_patterns).join(', ')
+        // biome-ignore lint/suspicious/noConsole: intentional CLI output
+        console.error(`Unknown subphase pattern "${patternName}". Available: ${available}`)
+        process.exit(1)
+      }
+      resolvedSubphasePattern = patternDef.steps
+    } else {
+      resolvedSubphasePattern = containerPhase.subphase_pattern
+    }
+  }
+
   const sessionId = parsed.session || (await getCurrentSessionId())
   const stateFile = await getStateFilePath(sessionId)
 
@@ -616,7 +637,6 @@ export async function enter(args: string[]): Promise<void> {
     let tasks: Task[] = []
 
     if (hasContainerPhase && specPhases && issueNum) {
-      const subphasePattern = containerPhase?.subphase_pattern ?? []
       const containerPhaseNum = containerPhase
         ? Number.parseInt(containerPhase.id.replace('p', ''), 10)
         : 2
@@ -625,12 +645,12 @@ export async function enter(args: string[]): Promise<void> {
       const orchTasks = modeConfig.template
         ? buildPhaseTasks(modeConfig.template, workflowId, issueNum)
         : []
-      const specTasks = buildSpecTasks(specPhases, issueNum, subphasePattern, containerPhaseNum)
+      const specTasks = buildSpecTasks(specPhases, issueNum, resolvedSubphasePattern, containerPhaseNum)
 
       // Wire cross-phase dependencies:
       // - First P2.X:impl depends on last task of P1 (Claim)
       //   P1 may be expanded into steps, so find the last task with id 'p1' or 'p1:*'
-      const firstImplId = `p${containerPhaseNum}.1:${subphasePattern[0]?.id_suffix ?? 'impl'}`
+      const firstImplId = `p${containerPhaseNum}.1:${resolvedSubphasePattern[0]?.id_suffix ?? 'impl'}`
       const firstImpl = specTasks.find((t) => t.id === firstImplId)
       const lastP1TaskId = [...orchTasks]
         .filter((t) => t.id === 'p1' || t.id.startsWith('p1:'))
@@ -641,7 +661,7 @@ export async function enter(args: string[]): Promise<void> {
 
       // - First task of P3 (Close) depends on last P2.X:verify
       //   P3 may be expanded into steps, so find the first task with id 'p3' or 'p3:*'
-      const lastPatternSuffix = subphasePattern[subphasePattern.length - 1]?.id_suffix ?? 'verify'
+      const lastPatternSuffix = resolvedSubphasePattern[resolvedSubphasePattern.length - 1]?.id_suffix ?? 'verify'
       const lastVerifyId = `p${containerPhaseNum}.${specPhases.length}:${lastPatternSuffix}`
       const firstP3Task = orchTasks.find((t) => t.id === 'p3' || t.id.startsWith('p3:'))
       if (firstP3Task && specTasks.some((t) => t.id === lastVerifyId)) {
@@ -703,8 +723,7 @@ export async function enter(args: string[]): Promise<void> {
   let wouldCreateTasks = 0
   if (parsed.dryRun) {
     if (hasContainerPhase && specPhases) {
-      const subphasePattern = containerPhase?.subphase_pattern ?? []
-      const specTaskCount = specPhases.length * (subphasePattern.length || 1)
+      const specTaskCount = specPhases.length * (resolvedSubphasePattern.length || 1)
       // Orchestration tasks: non-container phases expand steps or fall back to task_config
       const orchTaskCount =
         templatePhases
@@ -734,6 +753,7 @@ export async function enter(args: string[]): Promise<void> {
     phaseTitles,
     templatePhases ?? undefined,
     config.global_behavior?.task_system,
+    resolvedSubphasePattern.length > 0 ? resolvedSubphasePattern : undefined,
   )
 
   // Output human-readable guidance to stderr - native tasks mode
@@ -805,7 +825,7 @@ export async function enter(args: string[]): Promise<void> {
           wouldCreateTasks,
           pattern:
             hasContainerPhase && specPhases
-              ? `${templatePhases?.filter((p) => !p.container && p.task_config?.title).length ?? 0} orchestration + ${specPhases.length} phases × ${containerPhase?.subphase_pattern?.length || 1} subphases = ${wouldCreateTasks} tasks`
+              ? `${templatePhases?.filter((p) => !p.container && p.task_config?.title).length ?? 0} orchestration + ${specPhases.length} phases × ${resolvedSubphasePattern.length || 1} subphases = ${wouldCreateTasks} tasks`
               : `${wouldCreateTasks} tasks`,
         }),
         enteredAt: finalState.updatedAt,
