@@ -640,6 +640,86 @@ export function assertTaskDependencyOrderRespected(): EvalCheckpoint {
   }
 }
 
+// ─── Task Generation Assertions ──────────────────────────────────────────────
+
+/**
+ * Assert that at least one native task has metadata.originalId matching the given suffix.
+ * Verifies that subphase pattern expansion created the expected task IDs.
+ * Example: assertNativeTaskHasOriginalId('p2.1:impl') checks for impl task of first spec phase.
+ */
+export function assertNativeTaskHasOriginalId(suffix: string): EvalCheckpoint {
+  return {
+    name: `native task exists with originalId: ${suffix}`,
+    assert(ctx: EvalContext) {
+      if (!ctx.sessionId) {
+        return fail('No sessionId on EvalContext — cannot check native tasks')
+      }
+      const tasks = readNativeTaskFiles(ctx.sessionId)
+      if (tasks.length === 0) {
+        return fail('No native task files found')
+      }
+      const match = tasks.find(
+        (t) => (t.metadata as Record<string, unknown>)?.originalId === suffix,
+      )
+      if (!match) {
+        const ids = tasks
+          .map((t) => (t.metadata as Record<string, unknown>)?.originalId)
+          .filter(Boolean)
+          .join(', ')
+        return fail(
+          `No native task with originalId '${suffix}'. Found: ${ids}`,
+        )
+      }
+      return pass()
+    },
+  }
+}
+
+/**
+ * Assert that at least one native task's description matches the given pattern.
+ * Verifies that instruction/agent metadata from subphase patterns carried through
+ * to the native task description field.
+ */
+export function assertNativeTaskHasInstruction(pattern: string | RegExp): EvalCheckpoint {
+  const label = pattern instanceof RegExp ? pattern.source : pattern
+  return {
+    name: `native task has instruction: ${label}`,
+    assert(ctx: EvalContext) {
+      if (!ctx.sessionId) {
+        return fail('No sessionId on EvalContext — cannot check native tasks')
+      }
+      const tasks = readNativeTaskFiles(ctx.sessionId)
+      if (tasks.length === 0) {
+        return fail('No native task files found')
+      }
+      const matches = pattern instanceof RegExp
+        ? tasks.some((t) => pattern.test(t.description))
+        : tasks.some((t) => t.description.includes(pattern))
+      if (!matches) {
+        return fail(
+          `No native task description matches '${label}'. ` +
+          `Descriptions: ${tasks.map((t) => t.description.slice(0, 60)).join(' | ')}`,
+        )
+      }
+      return pass()
+    },
+  }
+}
+
+/**
+ * Implementation task generation presets for a 2-phase spec with impl-verify pattern.
+ * Verifies the subphase pattern expanded correctly into native tasks.
+ */
+export function implTaskGenPresets(): EvalCheckpoint[] {
+  return [
+    assertNativeTaskHasOriginalId('p2.1:impl'),
+    assertNativeTaskHasOriginalId('p2.1:verify'),
+    assertNativeTaskHasOriginalId('p2.2:impl'),
+    assertNativeTaskHasOriginalId('p2.2:verify'),
+    assertNativeTaskHasInstruction(/verify-phase/),
+  ]
+}
+
 // ─── Stop Hook Assertions ────────────────────────────────────────────────────
 
 interface StopHookLogEntry {

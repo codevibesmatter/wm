@@ -75,6 +75,12 @@ export interface EvalScenario {
    * When set and judge is enabled, the transcript is reviewed against this template.
    */
   templatePath?: string
+  /**
+   * Shell commands to run after batteries --update but before git init.
+   * Use for per-scenario fixture customization (e.g., overwriting a template file).
+   * Commands run with cwd=projectDir and CLAUDE_PROJECT_DIR set.
+   */
+  fixtureSetup?: string[]
 }
 
 export interface EvalContext {
@@ -188,6 +194,16 @@ export async function runScenario(
     } catch (err) {
       const msg = (err as { stderr?: Buffer }).stderr?.toString() ?? String(err)
       throw new Error(`kata batteries --update failed for fixture '${fixtureName}': ${msg}`)
+    }
+    // Run optional per-scenario fixture setup commands
+    if (scenario.fixtureSetup?.length) {
+      for (const cmd of scenario.fixtureSetup) {
+        execSync(cmd, {
+          cwd: projectDir,
+          env: { ...process.env, CLAUDE_PROJECT_DIR: projectDir },
+          stdio: ['pipe', 'pipe', 'pipe'],
+        })
+      }
     }
     // Initialize git repo so the inner agent has a working git context
     execSync(

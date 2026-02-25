@@ -39,13 +39,15 @@ import { stopHookEnforcementScenario } from './scenarios/stop-hook-enforcement.j
 import { stopHookTestScenario } from './scenarios/stop-hook-test.js'
 import { hookLifecycleScenario } from './scenarios/hook-lifecycle.js'
 import { planningInterviewScenario } from './scenarios/planning-interview.js'
+import { implTaskGenDefaultScenario } from './scenarios/impl-task-gen-default.js'
+import { implTaskGenCustomScenario } from './scenarios/impl-task-gen-custom.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const TRANSCRIPT_DIR = resolve(__dirname, '../eval-transcripts')
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
-const scenarios = [askUserPauseScenario, modeEntryScenario, onboardScenario, taskModeScenario, taskDisciplineScenario, stopHookEnforcementScenario, stopHookTestScenario, hookLifecycleScenario, planningModeScenario, planningInterviewScenario, planningAuthScenario, implAuthScenario, researchModeScenario, liveHookVerifyScenario, liveTaskScenario, liveResearchScenario, liveTaskDisciplineScenario]
+const scenarios = [askUserPauseScenario, modeEntryScenario, onboardScenario, taskModeScenario, taskDisciplineScenario, stopHookEnforcementScenario, stopHookTestScenario, hookLifecycleScenario, planningModeScenario, planningInterviewScenario, planningAuthScenario, implAuthScenario, implTaskGenDefaultScenario, implTaskGenCustomScenario, researchModeScenario, liveHookVerifyScenario, liveTaskScenario, liveResearchScenario, liveTaskDisciplineScenario]
 
 /** Scenarios that require --project (no built-in fixture) */
 const LIVE_SCENARIO_IDS = new Set(['live-hook-verify', 'live-task', 'live-research', 'live-task-discipline', 'stop-hook-test'])
