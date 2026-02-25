@@ -6,6 +6,9 @@ import { removeProject } from './projects/remove.js'
 import { initProject } from './projects/init.js'
 import { doctorProjects } from './projects/doctor.js'
 import { upgradeProjects } from './projects/upgrade.js'
+import { compareProjects } from './projects/compare.js'
+import { syncProjects } from './projects/sync.js'
+import { backupProjects } from './projects/backup.js'
 
 const SUBCOMMANDS: Record<string, (args: string[]) => Promise<void>> = {
   'init-manager': initManager,
@@ -15,6 +18,9 @@ const SUBCOMMANDS: Record<string, (args: string[]) => Promise<void>> = {
   init: initProject,
   doctor: doctorProjects,
   upgrade: upgradeProjects,
+  compare: compareProjects,
+  sync: syncProjects,
+  backup: backupProjects,
 }
 
 function printUsage(): void {
@@ -29,6 +35,9 @@ Subcommands:
   init <path> [--alias=<name>]              Initialize new project + register
   doctor [<project>] [--fix] [--json]       Health checks across projects
   upgrade [<project>] [--dry-run]           Bulk batteries update
+  compare <a> <b> [--json]                  Compare config between projects
+  sync <source> <target> [--dry-run]        Copy config between projects
+  backup [<project>] [--list]               Backup/restore project config
 
 Examples:
   kata projects init-manager
