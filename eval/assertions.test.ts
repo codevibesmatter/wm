@@ -5,7 +5,10 @@
  * with mock EvalContext objects.
  */
 
-import { describe, it, expect } from 'bun:test'
+import { describe, it, expect, afterAll } from 'bun:test'
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
+import { homedir } from 'node:os'
 import type { EvalContext } from './harness.js'
 import {
   assertCurrentMode,
@@ -32,6 +35,9 @@ import {
   assertNoTaskCreateCalls,
   assertNativeTaskCount,
   assertTaskDependencyOrderRespected,
+  assertNativeTaskHasOriginalId,
+  assertNativeTaskHasInstruction,
+  implTaskGenPresets,
   assertStopHookBlocked,
   assertStopHookBlockedWithReason,
   assertStopHookEventuallyAllowed,
@@ -629,6 +635,116 @@ describe('stopHookPresets', () => {
       'stop hook blocked >= 1 time(s)',
       'stop hook blocked with reason: task.*pending',
       'stop hook eventually allowed exit',
+    ])
+  })
+})
+
+// ─── Task Generation Assertions ─────────────────────────────────────────────
+
+// Create temp native task files for testing
+const TEST_SESSION_ID = `eval-test-taskgen-${Date.now()}`
+const TASKS_DIR = join(homedir(), '.claude', 'tasks', TEST_SESSION_ID)
+
+function setupTestTasks() {
+  mkdirSync(TASKS_DIR, { recursive: true })
+  const tasks = [
+    {
+      id: '1', subject: 'GH#100: P2.1: IMPL - Health endpoint', description: 'Workflow task',
+      activeForm: 'Implementing', status: 'completed', blocks: ['2'], blockedBy: [],
+      metadata: { workflowId: 'GH#100', issueNumber: 100, originalId: 'p2.1:impl' },
+    },
+    {
+      id: '2', subject: 'GH#100: P2.1: VERIFY - Health endpoint', description: 'Run: kata verify-phase P2.1 --issue=100',
+      activeForm: 'Verifying', status: 'completed', blocks: [], blockedBy: ['1'],
+      metadata: { workflowId: 'GH#100', issueNumber: 100, originalId: 'p2.1:verify' },
+    },
+    {
+      id: '3', subject: 'GH#100: P2.1: REVIEW - Health endpoint',
+      description: '\nRun: kata review --prompt=code-review --provider=claude',
+      activeForm: 'Reviewing', status: 'completed', blocks: [], blockedBy: ['1'],
+      metadata: { workflowId: 'GH#100', issueNumber: 100, originalId: 'p2.1:review' },
+    },
+  ]
+  for (const task of tasks) {
+    writeFileSync(join(TASKS_DIR, `${task.id}.json`), JSON.stringify(task, null, 2))
+  }
+}
+
+setupTestTasks()
+
+afterAll(() => {
+  rmSync(TASKS_DIR, { recursive: true, force: true })
+})
+
+describe('assertNativeTaskHasOriginalId', () => {
+  it('fails when no sessionId', async () => {
+    const ctx = mockContext({})
+    const result = await assertNativeTaskHasOriginalId('p2.1:impl').assert(ctx)
+    expect(result).toContain('No sessionId')
+  })
+
+  it('passes when task with matching originalId exists', async () => {
+    const ctx = mockContext({ sessionId: TEST_SESSION_ID })
+    const result = await assertNativeTaskHasOriginalId('p2.1:impl').assert(ctx)
+    expect(result).toBeNull()
+  })
+
+  it('passes for verify task', async () => {
+    const ctx = mockContext({ sessionId: TEST_SESSION_ID })
+    const result = await assertNativeTaskHasOriginalId('p2.1:verify').assert(ctx)
+    expect(result).toBeNull()
+  })
+
+  it('passes for review task', async () => {
+    const ctx = mockContext({ sessionId: TEST_SESSION_ID })
+    const result = await assertNativeTaskHasOriginalId('p2.1:review').assert(ctx)
+    expect(result).toBeNull()
+  })
+
+  it('fails when no task has matching originalId', async () => {
+    const ctx = mockContext({ sessionId: TEST_SESSION_ID })
+    const result = await assertNativeTaskHasOriginalId('p2.2:impl').assert(ctx)
+    expect(result).toContain("No native task with originalId 'p2.2:impl'")
+    expect(result).toContain('p2.1:impl')
+  })
+})
+
+describe('assertNativeTaskHasInstruction', () => {
+  it('fails when no sessionId', async () => {
+    const ctx = mockContext({})
+    const result = await assertNativeTaskHasInstruction('verify-phase').assert(ctx)
+    expect(result).toContain('No sessionId')
+  })
+
+  it('passes when description matches string', async () => {
+    const ctx = mockContext({ sessionId: TEST_SESSION_ID })
+    const result = await assertNativeTaskHasInstruction('verify-phase').assert(ctx)
+    expect(result).toBeNull()
+  })
+
+  it('passes when description matches regex', async () => {
+    const ctx = mockContext({ sessionId: TEST_SESSION_ID })
+    const result = await assertNativeTaskHasInstruction(/kata review --prompt=code-review/).assert(ctx)
+    expect(result).toBeNull()
+  })
+
+  it('fails when no description matches', async () => {
+    const ctx = mockContext({ sessionId: TEST_SESSION_ID })
+    const result = await assertNativeTaskHasInstruction('nonexistent-pattern').assert(ctx)
+    expect(result).toContain("No native task description matches 'nonexistent-pattern'")
+  })
+})
+
+describe('implTaskGenPresets', () => {
+  it('returns 5 checkpoints', () => {
+    const presets = implTaskGenPresets()
+    expect(presets).toHaveLength(5)
+    expect(presets.map((p) => p.name)).toEqual([
+      'native task exists with originalId: p2.1:impl',
+      'native task exists with originalId: p2.1:verify',
+      'native task exists with originalId: p2.2:impl',
+      'native task exists with originalId: p2.2:verify',
+      'native task has instruction: verify-phase',
     ])
   })
 })
