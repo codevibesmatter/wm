@@ -222,7 +222,34 @@ phases:
             }
           ])
 
-          Document all answers — these become the Test Plan section in the spec.
+          **Round 2: Verification Plan — how to verify against the real running system**
+
+          AskUserQuestion(questions=[
+            {
+              question: "How should this feature be verified against a real running system?",
+              header: "Verification",
+              options: [
+                {label: "API calls", description: "curl/httpie commands against real endpoints — check status codes, response bodies"},
+                {label: "Browser navigation", description: "Visit URLs, click elements, observe rendered output"},
+                {label: "CLI commands", description: "Run tool commands, verify stdout/stderr output"},
+                {label: "Not applicable", description: "No runtime verification possible (config-only, template-only changes)"}
+              ],
+              multiSelect: false
+            },
+            {
+              question: "How is the dev server started for this project?",
+              header: "Dev Server",
+              options: [
+                {label: "npm run dev", description: "Standard Node.js dev server"},
+                {label: "Custom command", description: "I'll specify the command"},
+                {label: "No dev server", description: "CLI tool, library, or build-only project"}
+              ],
+              multiSelect: false
+            }
+          ])
+
+          Document all answers — testing strategy feeds the Test Plan section, verification
+          strategy feeds the Verification Plan section in the spec.
           Then: Mark this task completed via TaskUpdate
 
       - id: design
@@ -384,12 +411,43 @@ phases:
             Phases go in YAML frontmatter phases: array.
             Each phase gets test_cases: with 1-3 entries.
 
+            ## Test Infrastructure
+            What testing setup exists or needs to be created (e.g., vitest config,
+            test runner, mock utilities). The correct build command for this project.
+
+            ## Verification Plan
+            Concrete, executable steps to verify the feature works against the REAL
+            running system. NOT unit tests — these are commands a fresh agent can run
+            to confirm the feature actually works end-to-end.
+
+            For each verification scenario:
+              ### VP{N}: {Scenario Name}
+              Steps:
+              1. {Command to execute — curl, browser URL, CLI invocation}
+                 Expected: {specific response, status code, or observable outcome}
+              2. {Next command}
+                 Expected: {expected result}
+
+            Example format:
+              ### VP1: Health endpoint returns 200
+              Steps:
+              1. `curl -s http://localhost:3000/api/health`
+                 Expected: `{"status":"ok"}` with HTTP 200
+              2. `curl -s http://localhost:3000/api/health -H "Accept: text/plain"`
+                 Expected: `ok` with HTTP 200
+
+            Rules:
+            - Every step must be a literal command or URL — no abstract descriptions
+            - "Verify that it works" is NOT a valid step
+            - Include expected response bodies, status codes, or visible UI state
+            - If the feature has no runtime (config-only, template-only), write:
+              "No runtime verification — changes are config/template only."
+
             ## Implementation Hints
             1. Key Imports table — exact package subpath exports and named imports
             2. Code Patterns — 2-5 copy-pasteable snippets (init, wiring, key API usage)
             3. Gotchas — subpath export quirks, peer deps, TS config, code generation
-            4. Verification Strategy — test infra, build/check command for this project
-            5. Reference Doc URLs with descriptions
+            4. Reference Doc URLs with descriptions
 
             To fill Implementation Hints: re-read P0 research, web-search for
             integration guides if external libraries are involved, find canonical
@@ -399,6 +457,8 @@ phases:
             - No TBD/TODO/placeholder text
             - File paths must reference real files (verify with Glob/Grep)
             - Every behavior must have all Core fields filled
+            - ## Verification Plan section MUST have executable steps (not abstract descriptions)
+            - Every VP step must have a literal command and expected output
             - Return when spec is complete
           ", run_in_background=false)
 

@@ -95,13 +95,34 @@ Explicitly out of scope for this feature:
 
 See YAML frontmatter `phases:` above. Each phase should be 1-4 hours of focused work.
 
-## Verification Strategy
+## Test Infrastructure
 
-### Test Infrastructure
 {What testing setup exists or needs to be created. E.g., "vitest with jsdom — config exists at vitest.config.ts" or "No test config — create vitest.config.ts in Phase 1."}
 
 ### Build Verification
 {The correct command to verify the build. Note any framework-specific caveats. E.g., "Use `npm run build` (not bare `tsc`) because route types are generated at build time."}
+
+## Verification Plan
+
+{Executable steps to verify the feature works against the real running system.
+For each scenario, provide literal commands and expected outcomes.}
+
+### VP1: {Scenario Name}
+
+Steps:
+1. `{command to execute — curl, browser URL, CLI invocation}`
+   Expected: {specific response, status code, or observable outcome}
+2. `{next command}`
+   Expected: {expected result}
+
+### VP2: {Scenario Name}
+
+Steps:
+1. `{command}`
+   Expected: {expected result}
+
+{If the feature has no runtime verification (config-only, template-only), write:
+"No runtime verification — changes are config/template only."}
 
 ## Implementation Hints
 
