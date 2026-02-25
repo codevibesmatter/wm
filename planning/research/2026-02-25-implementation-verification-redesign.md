@@ -416,3 +416,67 @@ steps:
 4. **Failure loop**: When the verification agent reports failures, who fixes them? The original impl agent (resumed)? A fresh impl agent? The orchestrator? Probably: report failures back to orchestrator, orchestrator spawns a new impl-agent turn with the specific error to fix.
 
 5. **When verification is impossible locally**: Some features genuinely can't be verified locally (third-party webhooks, production-only services). The verification plan should identify these and mark them as "requires staging deployment" — which becomes a P3 (Close) gate rather than a per-phase gate.
+
+---
+
+## Part 8: This Must Be the Batteries Default, Not a Project Option
+
+### The problem with project-level template overrides
+
+Baseplane-dev1's `implementation-feature.md` diverged from the kata-wm batteries template with its own SPAWN/CODEX/VERIFY pattern. This created a project-specific verification approach that:
+- Was inconsistent with other projects using kata-wm
+- Had its own failure modes (phantom tasks, custom tools like `bgh finalize`)
+- Required project-specific knowledge to maintain
+- Still didn't produce working code
+
+Every project inventing its own verification workflow means inconsistent quality and no shared learning. When the batteries template improves, projects with overrides don't benefit.
+
+### The principle: one approach, in the batteries
+
+For agentic coding, there is really only one verification strategy that works: **the agent runs the code against real services and reacts to real errors**. This isn't one option among many — it's the only approach that consistently produces working code. The batteries should encode this as THE way implementation works.
+
+### What this means concretely
+
+**The batteries own the full verification strategy.** Projects configure what's project-specific (build commands, test commands, dev server setup) via `wm.yaml`, but they do NOT override the implementation template's phase structure or verification approach.
+
+#### Batteries templates (the standard, ships with kata-wm):
+
+| Template | What changes |
+|----------|-------------|
+| `batteries/templates/planning.md` | Spec-writer prompt requires a **Verification Plan** section with executable steps (curl commands, browser checks, expected responses). The interview's testing strategy step guides toward "how will you prove this works against the running system?" |
+| `batteries/templates/implementation.md` | Subphase pattern becomes `impl-test-verify`. IMPL does the work. TEST runs process gates (build, typecheck, existing tests). VERIFY spawns a fresh agent that executes the spec's Verification Plan against the real running system. |
+| `batteries/subphase-patterns.yaml` | `impl-verify` (2-step) replaced by `impl-test-verify` (3-step) as the default pattern. |
+
+#### Project-level config (`wm.yaml` — what projects customize):
+
+```yaml
+project:
+  build_command: "pnpm build"
+  test_command: "pnpm test"
+  typecheck_command: "pnpm typecheck"
+  dev_server_command: "./scripts/dev/setup.sh"  # NEW: how to start the dev server
+  dev_server_health: "http://localhost:8787/health"  # NEW: how to know it's ready
+```
+
+Projects configure their build/test/server infrastructure. They do NOT override the implementation template phases.
+
+#### What happens to project-specific tools:
+
+| Project tool | Batteries equivalent |
+|-------------|---------------------|
+| `at codex :code` (Baseplane) | Optional: configure as `reviews.code_reviewer` in wm.yaml. Runs during TEST step if configured. Not required. |
+| `at verify work` / `at verify feature` (Baseplane) | The VERIFY agent step IS this — but generic. Any project can define verification steps in the spec's VP section. Browser automation, curl, database queries — whatever the spec says. |
+| `bgh finalize` (Baseplane) | P3 Close step already handles `gh issue edit` / `gh pr create`. No custom tool needed. |
+| SPAWN impl-agent (Baseplane) | The batteries IMPL step uses `Task(subagent_type="general-purpose")` directly. No custom wrapper. |
+
+### The escape valve
+
+Projects CAN still override templates in `.kata/templates/` — this is needed for genuinely different workflows (e.g., documentation-only projects, infrastructure projects). But the batteries should be good enough that most projects don't need to. The goal is: **if you use kata-wm's batteries templates, your agent-produced code actually works.**
+
+### Summary
+
+The batteries templates are the product. They should encode the one verification approach that works:
+
+1. **Planning**: spec defines executable verification steps
+2. **Implementation**: fresh verification agent executes those steps against real services
+3. **No project-level override of the core verification strategy** — projects configure infrastructure, not workflow
