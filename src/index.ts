@@ -308,6 +308,7 @@ export * from './utils/timestamp.js'
 export * from './config/parser.js'
 export * from './config/cache.js'
 export * from './config/interviews.js'
+export * from './config/subphase-patterns.js'
 export * from './session/lookup.js'
 export * from './validation/index.js'
 

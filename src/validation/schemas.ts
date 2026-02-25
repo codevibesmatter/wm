@@ -55,6 +55,8 @@ export const subphasePatternSchema = z.object({
   active_form: z.string().min(1, 'Active form cannot be empty'),
   labels: z.array(z.string()).default([]),
   depends_on_previous: z.boolean().optional(),
+  instruction: z.string().optional(),
+  agent: agentStepConfigSchema.optional(),
 })
 
 /**
@@ -67,7 +69,7 @@ export const phaseSchema = z.object({
   task_config: phaseTaskConfigSchema.optional(),
   steps: z.array(phaseStepSchema).optional(), // Individual trackable units within phase (e.g., interview rounds)
   container: z.boolean().optional(), // Marks phase that accepts spec content phases
-  subphase_pattern: z.array(subphasePatternSchema).optional(), // For container phases: what tasks to create per spec phase
+  subphase_pattern: z.union([z.string(), z.array(subphasePatternSchema)]).optional(), // Name reference or inline array
 })
 
 /**
