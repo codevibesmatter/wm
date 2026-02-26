@@ -65,11 +65,10 @@ export const implE2eVerifyScenario: EvalScenario = {
     // Deterministic: evidence files written
     assertVerifyEvidenceExists(100),
     // LLM judge: evaluate complete transcript
-    // System threshold lowered: verify-run subagent can't spawn in SDK env (known limitation)
     assertJudgePasses({
       templatePath: '.claude/workflows/templates/implementation.md',
       minAgentScore: 70,
-      minSystemScore: 50,
+      minSystemScore: 70,
     }),
   ],
 }

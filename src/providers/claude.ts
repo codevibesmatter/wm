@@ -8,7 +8,19 @@
  * The SDK picks its own default model when none is specified.
  */
 
+import { createRequire } from 'node:module'
 import type { AgentProvider, AgentRunOptions, ModelOption, ThinkingLevel } from './types.js'
+
+/** Resolve the SDK's bundled cli.js so nested query() calls find the executable. */
+function resolveClaudeExecutable(): string | undefined {
+  try {
+    const require = createRequire(import.meta.url)
+    const sdkDir = require.resolve('@anthropic-ai/claude-agent-sdk/package.json').replace('/package.json', '')
+    return `${sdkDir}/cli.js`
+  } catch {
+    return undefined
+  }
+}
 
 const claudeThinking: ThinkingLevel[] = [
   { id: 'disabled', description: 'No extended thinking' },
@@ -72,6 +84,7 @@ export const claudeProvider: AgentProvider = {
         cwd: options.cwd,
         env,
         abortController: ac,
+        pathToClaudeCodeExecutable: resolveClaudeExecutable(),
       }
 
       if (options.model) queryOpts.model = options.model
