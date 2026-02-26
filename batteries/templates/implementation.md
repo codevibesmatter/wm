@@ -1,7 +1,7 @@
 ---
 id: implementation
 name: "Feature Implementation"
-description: "Execute approved spec — claim branch, implement, review, close with PR"
+description: "Execute approved spec — claim branch, implement, test, verify, close with PR"
 mode: implementation
 phases:
   - id: p0
@@ -79,14 +79,39 @@ phases:
   - id: p2
     name: Implement
     container: true
-    subphase_pattern: impl-test-verify
+    subphase_pattern: impl-test
 
   - id: p3
+    name: Verify
+    task_config:
+      title: "P3: Verify - run full Verification Plan via fresh agent"
+      labels: [orchestration, verify]
+      depends_on: [p2]
+    steps:
+      - id: run-verify
+        title: "Run kata verify-run"
+        instruction: |
+          Spawn a fresh verification agent to execute ALL VP steps from the spec:
+          ```bash
+          kata verify-run --issue={issue-number} --verbose
+          ```
+
+          This runs a separate Claude agent with full tool access that:
+          1. Enters verify mode
+          2. Executes every VP step from the spec
+          3. Fixes implementation if VP steps fail (repair loop, max 3 cycles)
+          4. Writes VP evidence JSON
+
+          If verify-run exits 0: all VP steps passed.
+          If verify-run exits 1: verification failed — review output for details.
+          Then: Mark this task completed via TaskUpdate
+
+  - id: p4
     name: Close
     task_config:
-      title: "P3: Close - final checks, commit, PR, close issue"
+      title: "P4: Close - final checks, commit, PR, close issue"
       labels: [orchestration, close]
-      depends_on: [p2]
+      depends_on: [p3]
     steps:
       - id: final-checks
         title: "Run final checks"
@@ -184,10 +209,12 @@ P1: Claim
 
 P2: Implement (per-spec-phase)
     ├── IMPL: implement the phase tasks
-    ├── TEST: run process gates (build, typecheck, tests)
-    └── VERIFY: execute spec's Verification Plan against real services
+    └── TEST: run process gates (build, typecheck, tests)
 
-P3: Close
+P3: Verify (once, after all phases)
+    └── kata verify-run — fresh agent executes full VP
+
+P4: Close
     ├── Final typecheck + tests
     ├── Commit + push
     ├── Create PR
@@ -197,15 +224,14 @@ P3: Close
 ## Key Rules
 
 - **Read spec first** — understand ALL phases before writing code
-- **One phase at a time** — complete IMPL + TEST + VERIFY before moving on
+- **One phase at a time** — complete IMPL + TEST before moving on
 - **No scope creep** — spec's non-goals are off-limits
 - **Commit per phase** — smaller commits, easier review
 
-## TEST Protocol
+## VERIFY Protocol
 
-Each TEST sub-phase follows this exact sequence. These are **process gates** —
-deterministic checks that the code compiles, tests pass, and the spec checklist
-is satisfied. Do NOT skip steps or reorder.
+Each VERIFY sub-phase follows this exact sequence. Run deterministic checks
+first, then do a spec-checklist review. Do NOT skip steps or reorder.
 
 ### Step 1: Build verification
 
@@ -222,11 +248,11 @@ its YAML, verify each one:
 ```
 For each test_case in the spec phase:
   - Does a test exist that covers this case?
-  - If not, write the test BEFORE marking TEST complete.
+  - If not, write the test BEFORE marking VERIFY complete.
   - Run the test and confirm it passes.
 ```
 
-If no test infrastructure exists, check the spec's Test Infrastructure
+If no test infrastructure exists, check the spec's Verification Strategy
 section for setup instructions.
 
 ### Step 3: Spec-checklist review
@@ -256,15 +282,14 @@ If a build or test fails:
 - Maximum 3 fix attempts per failure before escalating to user
 - Never silence errors, skip tests, or weaken assertions to pass
 
-## VERIFY Protocol
+## P3: Full Verification (kata verify-run)
 
-Each VERIFY sub-phase executes the spec's **Verification Plan** against the
-real running system. This is done by a **fresh agent** that has no knowledge
-of the implementation — only the VP steps from the spec.
+After all implementation phases are complete, P3 spawns a **fresh agent**
+that executes the spec's entire Verification Plan against the real system.
 
-**Tool reference:** Read the project's `.kata/verification-tools.md` (or
-`.claude/workflows/verification-tools.md`) for project-specific setup: dev server
-command, API base URL, auth, database access, and key endpoints.
+```bash
+kata verify-run --issue={N} --verbose
+```
 
 ### Why a fresh agent?
 
@@ -272,60 +297,23 @@ The implementing agent wrote the code AND the unit tests. It has a mental model
 that may contain blind spots. A fresh agent executing concrete VP steps against
 real services catches integration bugs that unit tests with mocks cannot.
 
-### Step 1: Start dev server
+### What verify-run does
 
-If `dev_server_command` is configured in `wm.yaml`, start the dev server:
-```bash
-# Example: npm run dev &
-# Wait for health endpoint to respond
-```
+1. Reads the spec's `## Verification Plan` section
+2. Parses all `### VPn:` steps into individual tasks
+3. Enters verify mode via `kata enter verify --issue=N`
+4. Executes each VP step literally (no modifications)
+5. If any step fails: diagnoses, fixes code, re-runs (max 3 cycles)
+6. Writes VP evidence JSON to `.kata/verification-evidence/`
 
-If the VP steps include server startup instructions, follow those instead.
+### After verify-run
 
-### Step 2: Execute VP steps
-
-Run each VP step from the spec's `## Verification Plan` section literally:
-
-```
-For each VP step:
-  1. Execute the command (curl, browser navigation, CLI invocation)
-  2. Compare actual output to expected output
-  3. Record: step ID, pass/fail, actual output, expected output
-```
-
-**Rules:**
-- Execute commands EXACTLY as written — do not modify or "improve" them
-- If a step fails, record the failure and continue (don't stop on first failure)
-- If a command requires the dev server, ensure it's running first
-
-### Step 3: Write VP evidence
-
-Write a VP evidence file at `.kata/verification-evidence/vp-{phaseId}-{issueNumber}.json`
-(or `.claude/verification-evidence/` if the project uses `.claude/` layout):
-
-```json
-{
-  "phaseId": "p1",
-  "issueNumber": 123,
-  "timestamp": "2026-02-25T12:00:00.000Z",
-  "steps": [
-    {"id": "VP1", "description": "...", "passed": true, "actual": "..."},
-    {"id": "VP2", "description": "...", "passed": false, "actual": "...", "expected": "..."}
-  ],
-  "allStepsPassed": false
-}
-```
-
-### Step 4: Handle failures
-
-If any VP step failed:
-- Fix the implementation (not the VP steps — those are the source of truth)
-- Re-run the failed VP steps
-- Maximum 3 fix attempts before escalating to user
-- Update the evidence file with final results
+- Exit code 0 → all VP steps passed, proceed to P4 Close
+- Exit code 1 → verification failed, review output and fix
 
 ## Stop Conditions
 
-- All spec phases implemented, tested, and verified (VP evidence files exist)
+- All spec phases implemented and tested
+- Verification Plan executed (VP evidence exists)
 - Changes committed and pushed
 - PR created (or explicitly skipped)
