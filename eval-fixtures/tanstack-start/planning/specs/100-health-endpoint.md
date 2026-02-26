@@ -59,6 +59,29 @@ Add a simple health check endpoint for monitoring. Returns server status and upt
 - No database connectivity checks
 - No dependency health checks
 
+## Verification Plan
+
+### VP1: Health endpoint returns valid JSON
+
+**Steps:**
+1. Start dev server: `npm run dev`
+2. Wait for server ready (check http://localhost:3000)
+3. `curl -s http://localhost:3000/api/health`
+4. Confirm response has `status: "ok"` and valid ISO 8601 `timestamp`
+
+**Expected:** 200 OK with `{ "status": "ok", "timestamp": "..." }`
+
+### VP2: Uptime tracking works
+
+**Steps:**
+1. (Dev server already running from VP1)
+2. `curl -s http://localhost:3000/api/health` — note `uptime_seconds`
+3. `sleep 2`
+4. `curl -s http://localhost:3000/api/health` — note `uptime_seconds` again
+5. Confirm second value > first value
+
+**Expected:** `uptime_seconds` increases between requests
+
 ## Implementation Phases
 
 See YAML frontmatter `phases:` above.

@@ -69,7 +69,7 @@ export const implTaskGenCustomScenario: EvalScenario = {
     `cat > .claude/workflows/subphase-patterns.yaml << 'YAML'\n${CUSTOM_SUBPHASE_PATTERNS}\nYAML`,
     // Override implementation template to reference custom pattern
     // sed replaces the subphase_pattern value in the YAML frontmatter
-    "sed -i 's/subphase_pattern: impl-verify/subphase_pattern: impl-review-verify/' .claude/workflows/templates/implementation.md",
+    "sed -i 's/subphase_pattern: impl-test-verify/subphase_pattern: impl-review-verify/' .claude/workflows/templates/implementation.md",
   ],
   prompt:
     'Implement the health endpoint feature from the approved spec at planning/specs/100-health-endpoint.md. ' +

@@ -736,13 +736,15 @@ describe('assertNativeTaskHasInstruction', () => {
 })
 
 describe('implTaskGenPresets', () => {
-  it('returns 5 checkpoints', () => {
+  it('returns 7 checkpoints', () => {
     const presets = implTaskGenPresets()
-    expect(presets).toHaveLength(5)
+    expect(presets).toHaveLength(7)
     expect(presets.map((p) => p.name)).toEqual([
       'native task exists with originalId: p2.1:impl',
+      'native task exists with originalId: p2.1:test',
       'native task exists with originalId: p2.1:verify',
       'native task exists with originalId: p2.2:impl',
+      'native task exists with originalId: p2.2:test',
       'native task exists with originalId: p2.2:verify',
       'native task has instruction: verify-phase',
     ])

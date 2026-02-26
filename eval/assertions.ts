@@ -707,14 +707,16 @@ export function assertNativeTaskHasInstruction(pattern: string | RegExp): EvalCh
 }
 
 /**
- * Implementation task generation presets for a 2-phase spec with impl-verify pattern.
- * Verifies the subphase pattern expanded correctly into native tasks.
+ * Implementation task generation presets for a 2-phase spec with impl-test-verify pattern.
+ * Verifies the 3-step subphase pattern expanded correctly into native tasks.
  */
 export function implTaskGenPresets(): EvalCheckpoint[] {
   return [
     assertNativeTaskHasOriginalId('p2.1:impl'),
+    assertNativeTaskHasOriginalId('p2.1:test'),
     assertNativeTaskHasOriginalId('p2.1:verify'),
     assertNativeTaskHasOriginalId('p2.2:impl'),
+    assertNativeTaskHasOriginalId('p2.2:test'),
     assertNativeTaskHasOriginalId('p2.2:verify'),
     assertNativeTaskHasInstruction(/verify-phase/),
   ]

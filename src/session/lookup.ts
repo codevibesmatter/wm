@@ -201,27 +201,45 @@ const SESSION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[
 export async function getCurrentSessionId(): Promise<string> {
   try {
     const projectDir = findProjectDir()
-    const sessionsDir = getSessionsDir(projectDir)
-    if (!existsSync(sessionsDir)) {
-      throw new Error('no sessions dir')
-    }
-    const entries = readdirSync(sessionsDir, { withFileTypes: true })
-    const candidates = entries
-      .filter((e) => e.isDirectory() && SESSION_ID_RE.test(e.name))
-      .map((e) => {
+
+    // Check both layout dirs — layout can shift mid-session if .kata/ is created
+    // after session-start already wrote state.json to .claude/sessions/
+    const sessionsDirs = [
+      getSessionsDir(projectDir),
+      path.join(projectDir, '.claude', 'sessions'),
+      path.join(projectDir, '.kata', 'sessions'),
+    ]
+    // Deduplicate paths
+    const uniqueDirs = [...new Set(sessionsDirs)]
+
+    const allCandidates: Array<{ id: string; mtimeMs: number }> = []
+    for (const sessionsDir of uniqueDirs) {
+      if (!existsSync(sessionsDir)) continue
+      const entries = readdirSync(sessionsDir, { withFileTypes: true })
+      for (const e of entries) {
+        if (!e.isDirectory() || !SESSION_ID_RE.test(e.name)) continue
         const stateFile = path.join(sessionsDir, e.name, 'state.json')
         try {
           const { mtimeMs } = statSync(stateFile)
-          return { id: e.name, mtimeMs }
+          allCandidates.push({ id: e.name, mtimeMs })
         } catch {
-          return null
+          // no state.json in this session dir
         }
-      })
-      .filter((x): x is { id: string; mtimeMs: number } => x !== null)
-      .sort((a, b) => b.mtimeMs - a.mtimeMs)
+      }
+    }
 
-    if (candidates[0]) {
-      return candidates[0].id
+    // Deduplicate by ID, keep highest mtime
+    const byId = new Map<string, { id: string; mtimeMs: number }>()
+    for (const c of allCandidates) {
+      const existing = byId.get(c.id)
+      if (!existing || c.mtimeMs > existing.mtimeMs) {
+        byId.set(c.id, c)
+      }
+    }
+
+    const sorted = [...byId.values()].sort((a, b) => b.mtimeMs - a.mtimeMs)
+    if (sorted[0]) {
+      return sorted[0].id
     }
   } catch {
     // fall through
@@ -240,7 +258,15 @@ export async function getCurrentSessionId(): Promise<string> {
 export async function getStateFilePath(sessionId?: string): Promise<string> {
   const sid = sessionId || (await getCurrentSessionId())
   const projectDir = findProjectDir()
-  return path.join(getSessionsDir(projectDir), sid, 'state.json')
+  // Check primary layout first, then fallback to both layouts
+  const primaryPath = path.join(getSessionsDir(projectDir), sid, 'state.json')
+  if (existsSync(primaryPath)) return primaryPath
+  // Fallback: check both layouts (handles mid-session layout shift)
+  for (const base of ['.kata', '.claude']) {
+    const candidate = path.join(projectDir, base, 'sessions', sid, 'state.json')
+    if (existsSync(candidate)) return candidate
+  }
+  return primaryPath // Return primary path even if missing (caller handles error)
 }
 
 /**

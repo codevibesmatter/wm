@@ -300,7 +300,8 @@ For each VP step:
 
 ### Step 3: Write VP evidence
 
-Write a VP evidence file at `.kata/verification-evidence/vp-{phaseId}-{issueNumber}.json`:
+Write a VP evidence file at `.kata/verification-evidence/vp-{phaseId}-{issueNumber}.json`
+(or `.claude/verification-evidence/` if the project uses `.claude/` layout):
 
 ```json
 {
