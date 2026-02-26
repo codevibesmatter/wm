@@ -1,0 +1,37 @@
+{
+  "issueNumber": 28,
+  "timestamp": "2026-02-26T03:15:00.000Z",
+  "steps": [
+    {
+      "id": "VP1",
+      "description": "Provider accepts full-agent options",
+      "passed": true,
+      "actual": "AgentRunOptions has allowedTools, maxTurns, permissionMode, settingSources, canUseTool, abortController, onMessage. claudeProvider.run() forwards all to query() with correct defaults ([] tools, 3 turns). 5 unit tests pass."
+    },
+    {
+      "id": "VP2",
+      "description": "parseVpSteps extracts VP sections correctly",
+      "passed": true,
+      "actual": "parseVpSteps splits ### VPn: headings into VpStep array. 7 unit tests pass (multi-step, empty, single, content preservation, non-sequential, non-VP headings). npm run build && bun test passes."
+    },
+    {
+      "id": "VP3",
+      "description": "Verify mode creates correct tasks",
+      "passed": true,
+      "actual": "batteries/templates/verify.md has Setup/Execute(container)/Evidence phases. modes.yaml has verify mode with stop_conditions: [tasks_complete, verification_plan_executed], workflow_prefix: VF. Template validates (5 phases)."
+    },
+    {
+      "id": "VP4",
+      "description": "kata verify-run spawns agent and writes evidence",
+      "passed": true,
+      "actual": "src/commands/verify-run.ts uses claudeProvider.run() with allowedTools, maxTurns:50, permissionMode:bypassPermissions, settingSources:['project']. Prompt includes 'kata enter verify --issue=N'. Registered in CLI dispatcher. Dry-run test parsed 5 VP steps from spec #28."
+    },
+    {
+      "id": "VP5",
+      "description": "Implementation template uses new flow",
+      "passed": true,
+      "actual": "implementation.md P2 has subphase_pattern: impl-test (2-step). P3 is Verify phase calling 'kata verify-run --issue={issue-number} --verbose'. P4 is Close (renumbered). impl-test pattern in subphase-patterns.yaml has 2 steps: impl, test. Old impl-test-verify kept for backwards compat."
+    }
+  ],
+  "allStepsPassed": true
+}
