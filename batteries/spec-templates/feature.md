@@ -103,6 +103,23 @@ See YAML frontmatter `phases:` above. Each phase should be 1-4 hours of focused 
 ### Build Verification
 {The correct command to verify the build. Note any framework-specific caveats. E.g., "Use `npm run build` (not bare `tsc`) because route types are generated at build time."}
 
+## Verification Plan
+
+Concrete, executable steps to verify the feature works against the REAL running system.
+NOT unit tests — these are commands a fresh agent can run to confirm end-to-end behavior.
+
+### VP1: {Scenario Name}
+Steps:
+1. `{command to execute — curl, browser URL, CLI invocation}`
+   Expected: {specific response, status code, or observable outcome}
+2. `{follow-up command if needed}`
+   Expected: {expected result}
+
+### VP2: {Scenario Name}
+Steps:
+1. `{command}`
+   Expected: {expected result}
+
 ## Implementation Hints
 
 ### Dependencies
