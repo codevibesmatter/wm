@@ -1,10 +1,9 @@
 /**
- * Implementation 3-Step Verify — impl-test-verify with Verification Plan
+ * Implementation impl-test + verify-run — 2-step per phase + final VP execution
  *
- * End-to-end test of the 3-step implementation flow:
- * - IMPL: implement spec phase tasks
- * - TEST: run kata verify-phase (process gates)
- * - VERIFY: fresh agent executes Verification Plan against real services
+ * End-to-end test of the implementation flow:
+ * - P2.X: IMPL + TEST per spec phase (process gates via kata verify-phase)
+ * - P3: VERIFY — fresh agent executes full Verification Plan via kata verify-run
  *
  * Uses tanstack-start fixture with pre-seeded spec at
  * planning/specs/100-health-endpoint.md (2 phases, with VP section).
@@ -15,9 +14,9 @@
  * Asserts:
  * 1. Standard workflow checks (mode, commit, clean tree, can-exit)
  * 2. Task discipline (pre-created tasks used, all completed, order respected)
- * 3. 3-step pattern expanded: p2.1:impl, p2.1:test, p2.1:verify per phase
- * 4. Verify task instructions contain VP content from spec
- * 5. Test task instructions contain verify-phase
+ * 3. 2-step pattern expanded: p2.1:impl, p2.1:test per phase
+ * 4. Test task instructions contain verify-phase
+ * 5. P3 verify task references verify-run
  */
 
 import type { EvalScenario } from '../harness.js'
@@ -45,7 +44,7 @@ const VERIFICATION_TOOLS_MD = `# Verification Tools
 
 export const impl3StepVerifyScenario: EvalScenario = {
   id: 'impl-3step-verify',
-  name: 'Implementation 3-step verify: impl-test-verify with VP',
+  name: 'Implementation impl-test + verify-run with VP',
   templatePath: '.claude/workflows/templates/implementation.md',
   fixture: 'tanstack-start',
   fixtureSetup: [
@@ -60,9 +59,9 @@ export const impl3StepVerifyScenario: EvalScenario = {
     ...workflowPresets('implementation'),
     ...taskDisciplinePresets(),
     ...implTaskGenPresets(),
-    // VP content should be injected into verify task instructions
-    assertNativeTaskHasInstruction(/Verification Plan/),
     // Test task should reference verify-phase
     assertNativeTaskHasInstruction(/verify-phase/),
+    // P3 verify task should reference verify-run
+    assertNativeTaskHasInstruction(/verify-run/),
   ],
 }
