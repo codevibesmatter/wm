@@ -44,4 +44,21 @@ export interface AgentRunOptions {
   env?: Record<string, string>
   /** Max execution time in ms. Default: 300_000 (5 min). */
   timeoutMs?: number
+
+  // ── Full-agent session options (defaults preserve text-only behavior) ──
+
+  /** Tools the agent can use. Default: [] (text-only, no tools). */
+  allowedTools?: string[]
+  /** Max agentic turns. Default: 3 (judge/review mode). */
+  maxTurns?: number
+  /** Permission mode. Default: 'bypassPermissions'. */
+  permissionMode?: string
+  /** Settings sources to load (e.g., ['project'] for .claude/settings.json). Default: []. */
+  settingSources?: string[]
+  /** PreToolUse hook — return allow/deny decisions for tool calls. */
+  canUseTool?: (tool: unknown) => unknown
+  /** AbortController for cancellation. Provider creates one if not provided. */
+  abortController?: AbortController
+  /** Streaming callback — receives every SDK message as it arrives. */
+  onMessage?: (message: unknown) => void
 }

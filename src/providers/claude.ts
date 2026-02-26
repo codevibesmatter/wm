@@ -1,7 +1,10 @@
 /**
  * Claude provider — wraps @anthropic-ai/claude-agent-sdk query().
  *
- * Uses the Agent SDK's streaming query with no tools (text-only judge).
+ * Supports two modes via AgentRunOptions:
+ * - Text-only (default): maxTurns=3, no tools — for judge/review tasks.
+ * - Full-agent: pass allowedTools, maxTurns, settingSources for agentic sessions.
+ *
  * The SDK picks its own default model when none is specified.
  */
 
@@ -55,25 +58,29 @@ export const claudeProvider: AgentProvider = {
     const env = options.env ?? buildCleanEnv()
     const timeoutMs = options.timeoutMs ?? 300_000
 
-    const ac = new AbortController()
+    const ac = options.abortController ?? new AbortController()
     const timer = setTimeout(() => ac.abort(), timeoutMs)
 
     const chunks: string[] = []
 
     try {
-      for await (const message of query({
-        prompt,
-        options: {
-          maxTurns: 3,
-          allowedTools: [] as string[],
-          permissionMode: 'bypassPermissions',
-          allowDangerouslySkipPermissions: true,
-          cwd: options.cwd,
-          env,
-          ...(options.model ? { model: options.model } : {}),
-          abortController: ac,
-        },
-      })) {
+      const queryOpts: Record<string, unknown> = {
+        maxTurns: options.maxTurns ?? 3,
+        allowedTools: options.allowedTools ?? ([] as string[]),
+        permissionMode: options.permissionMode ?? 'bypassPermissions',
+        allowDangerouslySkipPermissions: true,
+        cwd: options.cwd,
+        env,
+        abortController: ac,
+      }
+
+      if (options.model) queryOpts.model = options.model
+      if (options.settingSources) queryOpts.settingSources = options.settingSources
+      if (options.canUseTool) queryOpts.canUseTool = options.canUseTool
+
+      for await (const message of query({ prompt, options: queryOpts })) {
+        if (options.onMessage) options.onMessage(message)
+
         if (message.type === 'assistant' && message.message?.content) {
           for (const block of message.message.content) {
             if (block.type === 'text' && block.text) {
