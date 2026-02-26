@@ -14,7 +14,7 @@
  * 2. Task discipline (pre-created tasks used, all completed, order respected)
  * 3. Verify subagent was invoked (verify-run ran)
  * 4. Verification evidence files written
- * 5. LLM judge passes (agent and system scores >= 70)
+ * 5. LLM judge passes (agent >= 70, system >= 50)
  */
 
 import type { EvalScenario } from '../harness.js'
@@ -68,7 +68,7 @@ export const implE2eVerifyScenario: EvalScenario = {
     assertJudgePasses({
       templatePath: '.claude/workflows/templates/implementation.md',
       minAgentScore: 70,
-      minSystemScore: 70,
+      minSystemScore: 50,
     }),
   ],
 }

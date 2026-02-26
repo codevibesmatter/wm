@@ -52,9 +52,7 @@ function buildVerifyPrompt(issueNumber: number, vpContent: string, vpSteps: Retu
   return [
     `Execute the Verification Plan for issue #${issueNumber}.`,
     '',
-    `Enter verify mode: kata enter verify --issue=${issueNumber}`,
-    '',
-    'Then follow all tasks to completion.',
+    'IMPORTANT: Do NOT run any kata commands (no kata enter, no kata exit). Just execute the VP steps directly.',
     '',
     `## VP Steps to Execute (${vpSteps.length} total)`,
     stepList,
@@ -70,7 +68,9 @@ function buildVerifyPrompt(issueNumber: number, vpContent: string, vpSteps: Retu
     '4. Maximum 3 repair cycles before reporting failure',
     '',
     '## Evidence',
-    'When done, write VP evidence JSON and report results.',
+    `When all VP steps pass, write evidence to .claude/verification-evidence/vp-${issueNumber}.json with:`,
+    '- issueNumber, timestamp (ISO 8601), steps array (id, description, status, details)',
+    'Then report results summary.',
   ].join('\n')
 }
 
@@ -144,7 +144,9 @@ export async function verifyRun(args: string[]): Promise<void> {
       allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
       maxTurns: parsed.maxTurns ?? 50,
       permissionMode: 'bypassPermissions',
-      settingSources: ['project'],
+      // Don't load project settings — hooks (mode-gate, stop-conditions) are designed
+      // for the outer implementation agent, not the verify sub-agent.
+      settingSources: [],
       timeoutMs: 600_000, // 10 min
       onMessage: parsed.verbose
         ? (msg) => {
@@ -163,8 +165,8 @@ export async function verifyRun(args: string[]): Promise<void> {
     // Output final agent text
     process.stdout.write(`${result}\n`)
 
-    // Check for failure markers in output
-    const failed = /FAIL|❌|verification.*failed/i.test(result)
+    // Check for failure markers in output (avoid false positives like "Failed: 0")
+    const failed = /\bFAILED\b|❌|verification plan.*failed/i.test(result) && !/failed:\s*0/i.test(result)
     if (failed) {
       // biome-ignore lint/suspicious/noConsole: intentional CLI output
       console.error('verify-run: Verification FAILED')

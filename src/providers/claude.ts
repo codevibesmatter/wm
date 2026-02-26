@@ -75,6 +75,11 @@ export const claudeProvider: AgentProvider = {
 
     const chunks: string[] = []
 
+    // The SDK checks process.env for nesting detection (e.g. CLAUDECODE=1).
+    // Passing a clean env via options is not enough — must also clear process.env
+    // so the SDK itself doesn't detect a nested session and hang.
+    const savedEnv = clearNestingEnvVars()
+
     try {
       const queryOpts: Record<string, unknown> = {
         maxTurns: options.maxTurns ?? 3,
@@ -103,6 +108,7 @@ export const claudeProvider: AgentProvider = {
         }
       }
     } finally {
+      restoreEnvVars(savedEnv)
       clearTimeout(timer)
     }
 
@@ -110,15 +116,37 @@ export const claudeProvider: AgentProvider = {
   },
 }
 
-/** Build a filtered env stripping Claude-internal vars. */
+/** Returns true if the env var key is a Claude nesting-related variable. */
+function isClaudeNestingVar(key: string): boolean {
+  return key.startsWith('CLAUDECODE') || key.startsWith('CLAUDE_CODE_') || key === 'CLAUDE_PROJECT_DIR'
+}
+
+/** Build a filtered env stripping Claude-internal vars for the spawned process. */
 function buildCleanEnv(): Record<string, string> {
   const clean: Record<string, string> = {}
   for (const [key, value] of Object.entries(process.env)) {
     if (value === undefined) continue
-    if (key.startsWith('CLAUDECODE')) continue
-    if (key === 'CLAUDE_CODE_ENTRYPOINT') continue
-    if (key === 'CLAUDE_PROJECT_DIR') continue
+    if (isClaudeNestingVar(key)) continue
     clean[key] = value
   }
   return clean
+}
+
+/** Temporarily clear nesting env vars from process.env so the SDK doesn't detect a nested session. */
+function clearNestingEnvVars(): Record<string, string> {
+  const saved: Record<string, string> = {}
+  for (const key of Object.keys(process.env)) {
+    if (isClaudeNestingVar(key) && process.env[key] !== undefined) {
+      saved[key] = process.env[key]!
+      delete process.env[key]
+    }
+  }
+  return saved
+}
+
+/** Restore previously cleared env vars. */
+function restoreEnvVars(saved: Record<string, string>): void {
+  for (const [key, value] of Object.entries(saved)) {
+    process.env[key] = value
+  }
 }
