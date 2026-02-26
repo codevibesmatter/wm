@@ -46,6 +46,47 @@ export function extractVerificationPlan(specContent: string): string | null {
 }
 
 /**
+ * Parsed VP step from a ## Verification Plan section.
+ */
+export interface VpStep {
+  /** Step ID, e.g. "VP1", "VP2" */
+  id: string
+  /** Step title after "### VPn: " */
+  title: string
+  /** Full markdown content of the VP step (including the ### heading) */
+  instruction: string
+}
+
+/**
+ * Parse individual VP steps from a Verification Plan section.
+ * Splits content on ### VPn: headings into separate VpStep objects.
+ *
+ * @param vpContent - Full VP section content (from extractVerificationPlan)
+ * @returns Array of VpStep objects, empty if no ### VPn: headings found
+ */
+export function parseVpSteps(vpContent: string): VpStep[] {
+  const steps: VpStep[] = []
+  const pattern = /^### (VP\d+):\s*(.+)$/gm
+  const positions: Array<{ id: string; title: string; start: number }> = []
+
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(vpContent)) !== null) {
+    positions.push({ id: match[1], title: match[2].trim(), start: match.index })
+  }
+
+  for (let i = 0; i < positions.length; i++) {
+    const start = positions[i].start
+    const end = i + 1 < positions.length ? positions[i + 1].start : vpContent.length
+    steps.push({
+      id: positions[i].id,
+      title: positions[i].title,
+      instruction: vpContent.slice(start, end).trim(),
+    })
+  }
+  return steps
+}
+
+/**
  * Build tasks from spec phases using subphase pattern (pure function, no I/O)
  * Spec phases become P2.1, P2.2, etc. (nested under container phase)
  * Pattern defines what tasks to create per phase (e.g., impl → codex → gemini)
