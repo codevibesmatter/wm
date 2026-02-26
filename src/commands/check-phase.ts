@@ -1,4 +1,4 @@
-// kata verify-phase - Run per-phase verification (build → typecheck → tests → smoke → delta → review)
+// kata check-phase - Run per-phase process gates (build → typecheck → tests → smoke → delta → review)
 // All commands read from wm.yaml — zero hardcoded project assumptions.
 import { execSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -23,7 +23,7 @@ interface EvidenceFile {
 }
 
 /**
- * Parse arguments for verify-phase command
+ * Parse arguments for check-phase command
  */
 function parseArgs(args: string[]): {
   phaseId?: string
@@ -328,7 +328,7 @@ ${diff}`
       return {
         name: 'micro-review',
         passed: false,
-        output: `Review timed out or errored — re-run verify-phase to retry. ${output}`.trim(),
+        output: `Review timed out or errored — re-run check-phase to retry. ${output}`.trim(),
       }
     }
 
@@ -391,13 +391,13 @@ function printStep(step: StepResult): void {
 }
 
 /**
- * Main verify-phase entrypoint
+ * Main check-phase entrypoint
  */
-export async function verifyPhase(args: string[]): Promise<void> {
+export async function checkPhase(args: string[]): Promise<void> {
   const parsed = parseArgs(args)
 
   if (!parsed.phaseId) {
-    console.error('Usage: kata verify-phase <phase-id> [--issue=N] [--force] [--json]')
+    console.error('Usage: kata check-phase <phase-id> [--issue=N] [--force] [--json]')
     process.exit(1)
   }
 
@@ -425,7 +425,7 @@ export async function verifyPhase(args: string[]): Promise<void> {
 
   const specPath = join(projectRoot, cfg.spec_path ?? 'planning/specs')
 
-  console.log(`\n🔍 verify-phase ${parsed.phaseId} (issue #${issueNumber})`)
+  console.log(`\n🔍 check-phase ${parsed.phaseId} (issue #${issueNumber})`)
   console.log(`   diff base: ${diffBase}`)
   console.log('')
 

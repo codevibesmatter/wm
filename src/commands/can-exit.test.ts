@@ -253,7 +253,7 @@ describe('canExit', () => {
     const output = await captureCanExit(['--json', `--session=${process.env.CLAUDE_SESSION_ID}`])
     const result = JSON.parse(output) as { canExit: boolean; reasons: string[] }
 
-    const blockedByVerify = result.reasons.some((r) => r.includes('verify-phase has not been run'))
+    const blockedByVerify = result.reasons.some((r) => r.includes('check-phase has not been run'))
     expect(blockedByVerify).toBe(true)
   })
 
@@ -284,7 +284,7 @@ describe('canExit', () => {
     const output = await captureCanExit(['--json', `--session=${process.env.CLAUDE_SESSION_ID}`])
     const result = JSON.parse(output) as { canExit: boolean; reasons: string[] }
 
-    const blockedByVerify = result.reasons.some((r) => r.includes('verify-phase has not been run'))
+    const blockedByVerify = result.reasons.some((r) => r.includes('check-phase has not been run'))
     expect(blockedByVerify).toBe(false)
   })
 
@@ -315,7 +315,7 @@ describe('canExit', () => {
     const output = await captureCanExit(['--json', `--session=${process.env.CLAUDE_SESSION_ID}`])
     const result = JSON.parse(output) as { canExit: boolean; reasons: string[] }
 
-    const blockedByFailed = result.reasons.some((r) => r.includes('failed verify-phase'))
+    const blockedByFailed = result.reasons.some((r) => r.includes('failed check-phase'))
     expect(blockedByFailed).toBe(true)
   })
 

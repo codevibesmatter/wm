@@ -228,12 +228,12 @@ P4: Close
 - **No scope creep** — spec's non-goals are off-limits
 - **Commit per phase** — smaller commits, easier review
 
-## VERIFY Protocol
+## CHECK Protocol
 
-Each VERIFY sub-phase follows this exact sequence. Run deterministic checks
+Each CHECK sub-phase follows this exact sequence. Run deterministic checks
 first, then do a spec-checklist review. Do NOT skip steps or reorder.
 
-### Step 1: Build verification
+### Step 1: Build check
 
 Run the project's **build command** (e.g. `npm run build`), not bare
 `tsc --noEmit`. Projects with build-time codegen (route types, schema
@@ -248,7 +248,7 @@ its YAML, verify each one:
 ```
 For each test_case in the spec phase:
   - Does a test exist that covers this case?
-  - If not, write the test BEFORE marking VERIFY complete.
+  - If not, write the test BEFORE marking CHECK complete.
   - Run the test and confirm it passes.
 ```
 

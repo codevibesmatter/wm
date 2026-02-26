@@ -94,14 +94,14 @@ export function getKataDir(projectRoot: string): string {
  *   .kata/templates/      — mode templates
  *   .kata/modes.yaml      — mode config
  *   .kata/wm.yaml         — project config
- *   .kata/verification-evidence/ — verify-phase output
+ *   .kata/verification-evidence/ — check-phase output
  *
  * Old layout (.claude/):
  *   .claude/sessions/             — session state
  *   .claude/workflows/templates/  — mode templates
  *   .claude/workflows/modes.yaml  — mode config
  *   .claude/workflows/wm.yaml    — project config
- *   .claude/verification-evidence/ — verify-phase output
+ *   .claude/verification-evidence/ — check-phase output
  */
 function resolveKataPath(projectRoot: string, ...segments: string[]): string {
   const kataDir = getKataDir(projectRoot)

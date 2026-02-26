@@ -1,0 +1,23 @@
+# Subphase patterns define what tasks get created inside container phases.
+# Ships with batteries. Projects customize in .kata/subphase-patterns.yaml.
+# Templates reference patterns by name via `subphase_pattern: "impl-verify"`.
+#
+# Steps support optional `instruction` (template with placeholders) and `agent`
+# (provider/prompt/gate config — same schema as template phase step agents).
+
+subphase_patterns:
+  impl-verify:
+    description: "Implement then verify each spec phase"
+    steps:
+      - id_suffix: impl
+        title_template: "IMPL - {task_summary}"
+        todo_template: "Implement {task_summary}"
+        active_form: "Implementing {phase_name}"
+        labels: [impl]
+      - id_suffix: check
+        title_template: "CHECK - {phase_name}"
+        todo_template: "Check {phase_name} implementation"
+        active_form: "Checking {phase_name}"
+        labels: [check]
+        depends_on_previous: true
+        instruction: "Run check-phase for {phase_name}: kata check-phase {phase_label} --issue={issue}"

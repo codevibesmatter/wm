@@ -80,11 +80,11 @@ describe('subphasePatternSchema (step-level)', () => {
       title_template: 'VERIFY',
       todo_template: 'Verify',
       active_form: 'Verifying',
-      instruction: 'Run: kata verify-phase {phase_label} --issue={issue}',
+      instruction: 'Run: kata check-phase {phase_label} --issue={issue}',
     })
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.instruction).toBe('Run: kata verify-phase {phase_label} --issue={issue}')
+      expect(result.data.instruction).toBe('Run: kata check-phase {phase_label} --issue={issue}')
     }
   })
 
@@ -258,7 +258,7 @@ describe('loadSubphasePatterns 2-tier merge', () => {
     expect(config.subphase_patterns['impl-verify']).toBeDefined()
     expect(config.subphase_patterns['impl-verify'].steps).toHaveLength(2)
     expect(config.subphase_patterns['impl-verify'].steps[0].id_suffix).toBe('impl')
-    expect(config.subphase_patterns['impl-verify'].steps[1].id_suffix).toBe('verify')
+    expect(config.subphase_patterns['impl-verify'].steps[1].id_suffix).toBe('check')
   })
 
   it('project config overrides a package pattern', async () => {
@@ -459,14 +459,14 @@ describe('buildSpecTasks instruction/agent propagation', () => {
         active_form: 'Verifying {phase_name}',
         labels: [],
         depends_on_previous: true,
-        instruction: 'Run: kata verify-phase {phase_label} --issue={issue}',
+        instruction: 'Run: kata check-phase {phase_label} --issue={issue}',
       },
     ]
 
     const tasks = buildSpecTasks(sampleSpecPhases, 42, pattern)
     const verifyTask = tasks.find((t) => t.id === 'p2.1:verify')
     expect(verifyTask).toBeDefined()
-    expect(verifyTask!.instruction).toBe('Run: kata verify-phase P2.1 --issue=42')
+    expect(verifyTask!.instruction).toBe('Run: kata check-phase P2.1 --issue=42')
   })
 
   it('propagates agent config as kata review command', () => {
@@ -739,7 +739,7 @@ describe('buildSpecTasks verification plan injection', () => {
       active_form: 'Testing {phase_name}',
       labels: [] as string[],
       depends_on_previous: true,
-      instruction: 'Run: kata verify-phase {phase_label} --issue={issue}',
+      instruction: 'Run: kata check-phase {phase_label} --issue={issue}',
     },
     {
       id_suffix: 'verify',

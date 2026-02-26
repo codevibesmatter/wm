@@ -717,7 +717,7 @@ export function implTaskGenPresets(): EvalCheckpoint[] {
     assertNativeTaskHasOriginalId('p2.1:test'),
     assertNativeTaskHasOriginalId('p2.2:impl'),
     assertNativeTaskHasOriginalId('p2.2:test'),
-    assertNativeTaskHasInstruction(/verify-phase/),
+    assertNativeTaskHasInstruction(/check-phase/),
   ]
 }
 

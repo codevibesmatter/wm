@@ -2,7 +2,7 @@
  * Implementation impl-test + verify-run — 2-step per phase + final VP execution
  *
  * End-to-end test of the implementation flow:
- * - P2.X: IMPL + TEST per spec phase (process gates via kata verify-phase)
+ * - P2.X: IMPL + TEST per spec phase (process gates via kata check-phase)
  * - P3: VERIFY — fresh agent executes full Verification Plan via kata verify-run
  *
  * Uses tanstack-start fixture with pre-seeded spec at
@@ -15,7 +15,7 @@
  * 1. Standard workflow checks (mode, commit, clean tree, can-exit)
  * 2. Task discipline (pre-created tasks used, all completed, order respected)
  * 3. 2-step pattern expanded: p2.1:impl, p2.1:test per phase
- * 4. Test task instructions contain verify-phase
+ * 4. Test task instructions contain check-phase
  * 5. P3 verify task references verify-run
  */
 
@@ -59,8 +59,8 @@ export const impl3StepVerifyScenario: EvalScenario = {
     ...workflowPresets('implementation'),
     ...taskDisciplinePresets(),
     ...implTaskGenPresets(),
-    // Test task should reference verify-phase
-    assertNativeTaskHasInstruction(/verify-phase/),
+    // Test task should reference check-phase
+    assertNativeTaskHasInstruction(/check-phase/),
     // P3 verify task should reference verify-run
     assertNativeTaskHasInstruction(/verify-run/),
   ],

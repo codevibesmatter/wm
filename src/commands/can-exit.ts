@@ -162,7 +162,7 @@ function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string
     if (!existsSync(evidenceDir)) {
       return {
         passed: false,
-        reason: `verify-phase has not been run. Run: kata verify-phase <phaseId> --issue=${issueNumber}`,
+        reason: `check-phase has not been run. Run: kata check-phase <phaseId> --issue=${issueNumber}`,
       }
     }
 
@@ -173,7 +173,7 @@ function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string
     if (phaseFiles.length === 0) {
       return {
         passed: false,
-        reason: `verify-phase has not been run. Run: kata verify-phase <phaseId> --issue=${issueNumber}`,
+        reason: `check-phase has not been run. Run: kata check-phase <phaseId> --issue=${issueNumber}`,
       }
     }
 
@@ -187,7 +187,7 @@ function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string
         if (content.overallPassed !== true) {
           return {
             passed: false,
-            reason: `Phase ${phaseId} failed verify-phase. Re-run: kata verify-phase ${phaseId} --issue=${issueNumber}`,
+            reason: `Phase ${phaseId} failed check-phase. Re-run: kata check-phase ${phaseId} --issue=${issueNumber}`,
           }
         }
 
@@ -196,7 +196,7 @@ function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string
           if (!isNaN(evidenceDate.getTime()) && evidenceDate < latestCommit) {
             return {
               passed: false,
-              reason: `Phase ${phaseId} verify-phase evidence is stale (predates latest commit). Re-run: kata verify-phase ${phaseId} --issue=${issueNumber}`,
+              reason: `Phase ${phaseId} check-phase evidence is stale (predates latest commit). Re-run: kata check-phase ${phaseId} --issue=${issueNumber}`,
             }
           }
         }
@@ -204,7 +204,7 @@ function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string
         // Unreadable evidence file — treat as not run
         return {
           passed: false,
-          reason: `verify-phase has not been run. Run: kata verify-phase <phaseId> --issue=${issueNumber}`,
+          reason: `check-phase has not been run. Run: kata check-phase <phaseId> --issue=${issueNumber}`,
         }
       }
     }
@@ -213,7 +213,7 @@ function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string
   } catch {
     return {
       passed: false,
-      reason: `verify-phase has not been run. Run: kata verify-phase <phaseId> --issue=${issueNumber}`,
+      reason: `check-phase has not been run. Run: kata check-phase <phaseId> --issue=${issueNumber}`,
     }
   }
 }

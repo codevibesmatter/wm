@@ -26,7 +26,7 @@ export interface TasksFile {
 }
 
 const VP_FALLBACK_TEXT =
-  'No verification plan found in spec. Run process verification only: kata verify-phase {phase_label} --issue={issue}'
+  'No verification plan found in spec. Run process gates only: kata check-phase {phase_label} --issue={issue}'
 
 /**
  * Extract the ## Verification Plan section from spec markdown.
