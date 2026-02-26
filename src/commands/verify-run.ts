@@ -1,20 +1,23 @@
 /**
- * kata verify-run — spawn a fresh Claude agent to execute a Verification Plan.
+ * kata verify-run — spawn a fresh Claude agent to verify recent changes.
  *
  * Usage:
- *   kata verify-run --issue=N              # Run all VP steps from spec for issue N
- *   kata verify-run --issue=N --verbose    # Stream agent output to stderr
- *   kata verify-run --issue=N --dry-run    # Show prompt without running
+ *   kata verify-run                        # Infer VP from git diff (default)
+ *   kata verify-run --issue=N              # Run VP steps from spec for issue N
  *   kata verify-run --plan-file=PATH       # Run VP steps from a standalone plan file
+ *   kata verify-run --verbose              # Stream agent output to stderr
+ *   kata verify-run --dry-run              # Show prompt without running
  *
- * Supports two input modes:
+ * Three input modes (first match wins):
  *   --issue=N      Finds the spec for issue N and extracts ## Verification Plan
  *   --plan-file=P  Reads VP steps directly from a markdown file (### VPn: format)
+ *   (default)      Infers verification scope from git diff + commit messages
  *
  * Called from implementation P3 or task P2 VERIFY phase. Spawns a fresh agent
  * via claudeProvider.run() with full tool access (no implementation bias).
  */
 
+import { execSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { claudeProvider } from '../providers/claude.js'
@@ -25,6 +28,7 @@ import { extractVerificationPlan, parseVpSteps } from './enter/task-factory.js'
 interface VerifyRunArgs {
   issueNumber?: number
   planFile?: string
+  infer: boolean
   verbose: boolean
   dryRun: boolean
   model?: string
@@ -32,13 +36,15 @@ interface VerifyRunArgs {
 }
 
 function parseArgs(args: string[]): VerifyRunArgs {
-  const result: VerifyRunArgs = { verbose: false, dryRun: false }
+  const result: VerifyRunArgs = { infer: false, verbose: false, dryRun: false }
 
   for (const arg of args) {
     if (arg.startsWith('--issue=')) {
       result.issueNumber = Number.parseInt(arg.slice('--issue='.length), 10)
     } else if (arg.startsWith('--plan-file=')) {
       result.planFile = arg.slice('--plan-file='.length)
+    } else if (arg === '--infer') {
+      result.infer = true
     } else if (arg === '--verbose') {
       result.verbose = true
     } else if (arg === '--dry-run') {
@@ -50,8 +56,15 @@ function parseArgs(args: string[]): VerifyRunArgs {
     }
   }
 
+  // Default to infer mode when no input source specified
+  if (!result.issueNumber && !result.planFile) {
+    result.infer = true
+  }
+
   return result
 }
+
+// --- Prompt builders ---
 
 function buildVerifyPrompt(issueNumber: number, vpContent: string, vpSteps: ReturnType<typeof parseVpSteps>): string {
   const stepList = vpSteps
@@ -93,7 +106,6 @@ function buildVerifyPromptFromPlanFile(planFile: string, vpContent: string, vpSt
     .map((s) => `- ${s.id}: ${s.title}`)
     .join('\n')
 
-  // Derive a slug from the plan file name for the evidence file
   const evidenceSlug = planFile.replace(/^.*\//, '').replace(/\.md$/, '')
 
   return [
@@ -126,23 +138,115 @@ function buildVerifyPromptFromPlanFile(planFile: string, vpContent: string, vpSt
   ].join('\n')
 }
 
+function buildInferPrompt(gitContext: string, evidenceSlug: string): string {
+  return [
+    'Verify the recent changes in this project.',
+    '',
+    '## Setup',
+    'First, enter verify mode:',
+    '```bash',
+    'kata enter verify',
+    '```',
+    '',
+    '## What Changed',
+    gitContext,
+    '',
+    '## Your Job',
+    'As a **fresh verification agent** with no prior context about these changes,',
+    'verify that the work is correct by executing these checks:',
+    '',
+    '### VP1: Build passes',
+    'Run the project build command and confirm zero errors.',
+    '',
+    '### VP2: Tests pass',
+    'Run the project test suite. All tests must pass (zero failures).',
+    '',
+    '### VP3: Changed files are correct',
+    'Read each changed file listed above. Verify:',
+    '- Code compiles and follows project conventions',
+    '- No obvious bugs, typos, or incomplete implementations',
+    '- No commented-out code, TODOs, or placeholder text left behind',
+    '- Imports are used and exports are consumed',
+    '',
+    '### VP4: Changes match commit intent',
+    'Compare what the commits claim to do (commit messages) with what actually changed.',
+    'Flag any discrepancies — files that changed but aren\'t mentioned, or claims that',
+    'aren\'t supported by the diff.',
+    '',
+    '## Repair Loop',
+    'If any VP step fails:',
+    '1. Diagnose the failure — read the error, identify root cause in implementation code',
+    '2. Fix the implementation (NOT the VP steps — those are the source of truth)',
+    '3. Re-run the failed VP step(s)',
+    '4. Maximum 3 repair cycles before reporting failure',
+    '',
+    '## Evidence',
+    `When all VP steps pass, write evidence to .claude/verification-evidence/vp-${evidenceSlug}.json with:`,
+    '- timestamp (ISO 8601), mode: "infer", steps array (id, description, status, details), allStepsPassed boolean',
+    'Then report results summary.',
+  ].join('\n')
+}
+
+// --- Git context gathering ---
+
+function gatherGitContext(cwd: string): string {
+  const run = (cmd: string) => {
+    try {
+      return execSync(cmd, { cwd, encoding: 'utf-8', timeout: 10_000 }).trim()
+    } catch {
+      return ''
+    }
+  }
+
+  const lines: string[] = []
+
+  // Recent commits (last 10 or since divergence from main)
+  const commits = run('git log --oneline -10 2>/dev/null')
+  if (commits) {
+    lines.push('### Recent Commits', '```', commits, '```', '')
+  }
+
+  // Diff stat
+  const diffStat = run('git diff HEAD~1 --stat 2>/dev/null') || run('git diff --staged --stat 2>/dev/null')
+  if (diffStat) {
+    lines.push('### Files Changed', '```', diffStat, '```', '')
+  }
+
+  // Actual diff (truncated)
+  const diff = run('git diff HEAD~1 2>/dev/null') || run('git diff --staged 2>/dev/null')
+  if (diff) {
+    const truncated = diff.length > 8000 ? `${diff.slice(0, 8000)}\n... (truncated, ${diff.length} chars total)` : diff
+    lines.push('### Diff', '```diff', truncated, '```', '')
+  }
+
+  // Uncommitted changes
+  const status = run('git status --short 2>/dev/null')
+  if (status) {
+    lines.push('### Uncommitted Changes', '```', status, '```', '')
+  }
+
+  if (lines.length === 0) {
+    lines.push('No git changes detected. The agent should still run build + tests.')
+  }
+
+  return lines.join('\n')
+}
+
+// --- Main ---
+
 export async function verifyRun(args: string[]): Promise<void> {
   const parsed = parseArgs(args)
 
-  if (!parsed.issueNumber && !parsed.planFile) {
-    // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.error('Usage: kata verify-run --issue=N [--verbose] [--dry-run] [--model=MODEL]')
-    // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.error('       kata verify-run --plan-file=PATH [--verbose] [--dry-run] [--model=MODEL]')
-    process.exitCode = 1
-    return
-  }
-
-  let vpContent: string
-  let vpSteps: ReturnType<typeof parseVpSteps>
   let prompt: string
   let evidenceSlug: string
   let sourceLabel: string
+
+  let cwd: string
+  try {
+    cwd = findProjectDir()
+  } catch {
+    cwd = process.cwd()
+  }
 
   if (parsed.planFile) {
     // --plan-file mode: read VP steps directly from a markdown file
@@ -154,9 +258,7 @@ export async function verifyRun(args: string[]): Promise<void> {
     }
 
     const planContent = readFileSync(parsed.planFile, 'utf-8')
-
-    // The plan file IS the verification plan — parse VP steps directly from it
-    vpSteps = parseVpSteps(planContent)
+    const vpSteps = parseVpSteps(planContent)
     if (vpSteps.length === 0) {
       // biome-ignore lint/suspicious/noConsole: intentional CLI output
       console.error(`No ### VPn: steps found in plan file (${parsed.planFile})`)
@@ -164,13 +266,17 @@ export async function verifyRun(args: string[]): Promise<void> {
       return
     }
 
-    vpContent = planContent
     evidenceSlug = `task-${parsed.planFile.replace(/^.*\//, '').replace(/\.md$/, '')}`
-    sourceLabel = `plan-file: ${parsed.planFile}`
-    prompt = buildVerifyPromptFromPlanFile(parsed.planFile, vpContent, vpSteps)
-  } else {
+    sourceLabel = `plan-file: ${parsed.planFile}, ${vpSteps.length} VP steps`
+    prompt = buildVerifyPromptFromPlanFile(parsed.planFile, planContent, vpSteps)
+
+    for (const step of vpSteps) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error(`  ${step.id}: ${step.title}`)
+    }
+  } else if (parsed.issueNumber) {
     // --issue mode: find spec and extract ## Verification Plan
-    const specPath = findSpecFile(parsed.issueNumber!)
+    const specPath = findSpecFile(parsed.issueNumber)
     if (!specPath) {
       // biome-ignore lint/suspicious/noConsole: intentional CLI output
       console.error(`No spec found for issue #${parsed.issueNumber}`)
@@ -187,7 +293,7 @@ export async function verifyRun(args: string[]): Promise<void> {
       return
     }
 
-    vpSteps = parseVpSteps(extracted)
+    const vpSteps = parseVpSteps(extracted)
     if (vpSteps.length === 0) {
       // biome-ignore lint/suspicious/noConsole: intentional CLI output
       console.error(`No ### VPn: steps found in Verification Plan (${specPath})`)
@@ -195,30 +301,39 @@ export async function verifyRun(args: string[]): Promise<void> {
       return
     }
 
-    vpContent = extracted
     evidenceSlug = `${parsed.issueNumber}`
-    sourceLabel = `issue #${parsed.issueNumber}, spec: ${specPath}`
-    prompt = buildVerifyPrompt(parsed.issueNumber!, vpContent, vpSteps)
+    sourceLabel = `issue #${parsed.issueNumber}, spec: ${specPath}, ${vpSteps.length} VP steps`
+    prompt = buildVerifyPrompt(parsed.issueNumber, extracted, vpSteps)
+
+    for (const step of vpSteps) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error(`  ${step.id}: ${step.title}`)
+    }
+  } else {
+    // Infer mode: build verification from git context
+    const gitContext = gatherGitContext(cwd)
+
+    // Generate a slug from the current HEAD short hash
+    const headShort = (() => {
+      try {
+        return execSync('git rev-parse --short HEAD', { cwd, encoding: 'utf-8', timeout: 5000 }).trim()
+      } catch {
+        return `infer-${Date.now()}`
+      }
+    })()
+
+    evidenceSlug = `infer-${headShort}`
+    sourceLabel = `infer mode (HEAD=${headShort})`
+    prompt = buildInferPrompt(gitContext, evidenceSlug)
   }
 
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
-  console.error(`verify-run: ${sourceLabel}, ${vpSteps.length} VP steps`)
-  for (const step of vpSteps) {
-    // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.error(`  ${step.id}: ${step.title}`)
-  }
+  console.error(`verify-run: ${sourceLabel}`)
 
   if (parsed.dryRun) {
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
     console.log(prompt)
     return
-  }
-
-  let cwd: string
-  try {
-    cwd = findProjectDir()
-  } catch {
-    cwd = process.cwd()
   }
 
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
@@ -289,7 +404,7 @@ export async function verifyRun(args: string[]): Promise<void> {
         // biome-ignore lint/suspicious/noConsole: intentional CLI output
         console.error('Try running verify-run directly:')
         // biome-ignore lint/suspicious/noConsole: intentional CLI output
-        console.error(`  node <kata-path>/dist/index.js verify-run ${parsed.planFile ? `--plan-file=${parsed.planFile}` : `--issue=${parsed.issueNumber}`} --verbose`)
+        console.error(`  node <kata-path>/dist/index.js verify-run ${parsed.planFile ? `--plan-file=${parsed.planFile}` : parsed.issueNumber ? `--issue=${parsed.issueNumber}` : '--infer'} --verbose`)
       }
     } else if (!agentOutput || agentOutput.trim().length === 0) {
       // biome-ignore lint/suspicious/noConsole: intentional CLI output
@@ -305,7 +420,7 @@ export async function verifyRun(args: string[]): Promise<void> {
       // biome-ignore lint/suspicious/noConsole: intentional CLI output
       console.error('  3. Check that @anthropic-ai/claude-agent-sdk is installed')
       // biome-ignore lint/suspicious/noConsole: intentional CLI output
-      console.error(`  4. Try direct invocation: node <kata-path>/dist/index.js verify-run ${parsed.planFile ? `--plan-file=${parsed.planFile}` : `--issue=${parsed.issueNumber}`} --verbose`)
+      console.error(`  4. Try direct invocation: node <kata-path>/dist/index.js verify-run ${parsed.planFile ? `--plan-file=${parsed.planFile}` : parsed.issueNumber ? `--issue=${parsed.issueNumber}` : '--infer'} --verbose`)
     }
     process.exitCode = 1
     return
@@ -313,7 +428,7 @@ export async function verifyRun(args: string[]): Promise<void> {
 
   try {
     const evidence = JSON.parse(readFileSync(evidencePath, 'utf-8')) as {
-      issueNumber: number
+      issueNumber?: number
       steps: Array<{ id: string; description: string; status: string; details?: string }>
       allStepsPassed?: boolean
     }
