@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import * as os from 'node:os'
-import { getUserConfigDir, getModesYamlPath, resolveTemplatePath, resolveSpecTemplatePath } from './lookup.js'
+import { getUserConfigDir, getModesYamlPath, resolveTemplatePath, resolveSpecTemplatePath, getCurrentSessionId, getStateFilePath } from './lookup.js'
 
 function makeTmpDir(label: string): string {
   const dir = join(
@@ -277,5 +277,88 @@ describe('resolveSpecTemplatePath', () => {
     process.env.XDG_CONFIG_HOME = join(tmpDir, 'nonexistent')
 
     expect(() => resolveSpecTemplatePath('nonexistent.md')).toThrow('Spec template not found')
+  })
+})
+
+describe('getCurrentSessionId — layout-shift resilience', () => {
+  const origProjectDir = process.env.CLAUDE_PROJECT_DIR
+  let tmpDir: string
+
+  beforeEach(() => {
+    tmpDir = makeTmpDir('session-layout')
+    // Create .claude/sessions/ (old layout) with a valid session
+    mkdirSync(join(tmpDir, '.claude', 'sessions'), { recursive: true })
+    process.env.CLAUDE_PROJECT_DIR = tmpDir
+  })
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true })
+    if (origProjectDir !== undefined) {
+      process.env.CLAUDE_PROJECT_DIR = origProjectDir
+    } else {
+      delete process.env.CLAUDE_PROJECT_DIR
+    }
+  })
+
+  it('finds session in .claude/sessions/ when .kata/ also exists but has no sessions', async () => {
+    // Simulate layout shift: .kata/ created mid-session (e.g. by writing VP evidence)
+    // but state.json remains in .claude/sessions/
+    const sessionId = '12345678-1234-4234-8234-123456789abc'
+    mkdirSync(join(tmpDir, '.claude', 'sessions', sessionId), { recursive: true })
+    writeFileSync(
+      join(tmpDir, '.claude', 'sessions', sessionId, 'state.json'),
+      JSON.stringify({ updatedAt: new Date().toISOString() }),
+    )
+    // Create .kata/ dir (triggers layout detection to prefer .kata/)
+    mkdirSync(join(tmpDir, '.kata', 'sessions'), { recursive: true })
+
+    const result = await getCurrentSessionId()
+    expect(result).toBe(sessionId)
+  })
+
+  it('finds session in .kata/sessions/ when it exists there', async () => {
+    const sessionId = 'abcdef01-2345-4678-9abc-def012345678'
+    mkdirSync(join(tmpDir, '.kata', 'sessions', sessionId), { recursive: true })
+    writeFileSync(
+      join(tmpDir, '.kata', 'sessions', sessionId, 'state.json'),
+      JSON.stringify({ updatedAt: new Date().toISOString() }),
+    )
+
+    const result = await getCurrentSessionId()
+    expect(result).toBe(sessionId)
+  })
+})
+
+describe('getStateFilePath — layout-shift resilience', () => {
+  const origProjectDir = process.env.CLAUDE_PROJECT_DIR
+  let tmpDir: string
+
+  beforeEach(() => {
+    tmpDir = makeTmpDir('state-path')
+    mkdirSync(join(tmpDir, '.claude', 'sessions'), { recursive: true })
+    process.env.CLAUDE_PROJECT_DIR = tmpDir
+  })
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true })
+    if (origProjectDir !== undefined) {
+      process.env.CLAUDE_PROJECT_DIR = origProjectDir
+    } else {
+      delete process.env.CLAUDE_PROJECT_DIR
+    }
+  })
+
+  it('returns .claude/ path when state.json exists only there despite .kata/ existing', async () => {
+    const sessionId = '12345678-1234-4234-8234-123456789abc'
+    mkdirSync(join(tmpDir, '.claude', 'sessions', sessionId), { recursive: true })
+    writeFileSync(
+      join(tmpDir, '.claude', 'sessions', sessionId, 'state.json'),
+      JSON.stringify({ updatedAt: new Date().toISOString() }),
+    )
+    // .kata/ exists but has no sessions
+    mkdirSync(join(tmpDir, '.kata', 'sessions'), { recursive: true })
+
+    const result = await getStateFilePath(sessionId)
+    expect(result).toBe(join(tmpDir, '.claude', 'sessions', sessionId, 'state.json'))
   })
 })
