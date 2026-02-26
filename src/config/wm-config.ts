@@ -14,6 +14,8 @@ export interface WmConfig {
     diff_base?: string                 // git diff baseline branch (default: 'origin/main')
     test_file_pattern?: string         // glob for test files (default: '*.test.ts,*.spec.ts')
     ci?: string | null
+    dev_server_command?: string | null   // e.g., "npm run dev" (null = no dev server)
+    dev_server_health?: string | null    // e.g., "http://localhost:3000/health" (null = no health check)
   }
   // Path configuration
   spec_path?: string // default: 'planning/specs'

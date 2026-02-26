@@ -28,6 +28,7 @@ export {
   getFirstPendingNativeTask,
   buildSpecTasks,
   buildPhaseTasks,
+  extractVerificationPlan,
 } from './task-factory.js'
 
 export { type ParsedArgs, parseArgs, createDefaultState } from './cli.js'

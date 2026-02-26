@@ -6,6 +6,41 @@
 # (provider/prompt/gate config — same schema as template phase step agents).
 
 subphase_patterns:
+  impl-test-verify:
+    description: "Implement, test process gates, then verify against real services"
+    steps:
+      - id_suffix: impl
+        title_template: "IMPL - {task_summary}"
+        todo_template: "Implement {task_summary}"
+        active_form: "Implementing {phase_name}"
+        labels: [impl]
+      - id_suffix: test
+        title_template: "TEST - {phase_name}"
+        todo_template: "Test {phase_name} implementation"
+        active_form: "Testing {phase_name}"
+        labels: [test]
+        depends_on_previous: true
+        instruction: "Run verify-phase for {phase_name}: kata verify-phase {phase_label} --issue={issue}"
+      - id_suffix: verify
+        title_template: "VERIFY - {phase_name}"
+        todo_template: "Verify {phase_name} against real services"
+        active_form: "Verifying {phase_name}"
+        labels: [verify, agent-verify]
+        depends_on_previous: true
+        instruction: |
+          Spawn a FRESH verification agent to execute the spec's Verification Plan.
+          The agent should have NO knowledge of the implementation — only the VP steps.
+
+          Before executing, read the project's verification tools config:
+          - `.kata/verification-tools.md` (or `.claude/workflows/verification-tools.md`)
+          This file has the project's dev server command, API base URL, auth setup,
+          database access, and key endpoints. Read it FIRST.
+
+          ## Verification Plan
+
+          {verification_plan}
+
+  # Legacy pattern — kept for backwards compatibility with existing project templates
   impl-verify:
     description: "Implement then verify each spec phase"
     steps:

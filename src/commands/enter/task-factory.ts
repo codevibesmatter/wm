@@ -25,16 +25,41 @@ export interface TasksFile {
   tasks: Task[]
 }
 
+const VP_FALLBACK_TEXT =
+  'No verification plan found in spec. Run process verification only: kata verify-phase {phase_label} --issue={issue}'
+
+/**
+ * Extract the ## Verification Plan section from spec markdown.
+ * Returns the full section content (heading + body) or null if not found.
+ */
+export function extractVerificationPlan(specContent: string): string | null {
+  const vpHeading = /^## Verification Plan\s*$/im
+  const match = vpHeading.exec(specContent)
+  if (!match || match.index === undefined) return null
+
+  const start = match.index + match[0].length
+  const rest = specContent.slice(start)
+  const nextHeading = /^## /m.exec(rest)
+  const end = nextHeading ? start + nextHeading.index : specContent.length
+
+  return specContent.slice(match.index, end).trim()
+}
+
 /**
  * Build tasks from spec phases using subphase pattern (pure function, no I/O)
  * Spec phases become P2.1, P2.2, etc. (nested under container phase)
  * Pattern defines what tasks to create per phase (e.g., impl → codex → gemini)
+ *
+ * @param specContent - Raw markdown content of the spec file. When provided,
+ *   the ## Verification Plan section is extracted and injected into any
+ *   {verification_plan} placeholders in subphase pattern instructions.
  */
 export function buildSpecTasks(
   specPhases: SpecPhase[],
   issueNum: number,
   subphasePattern: SubphasePattern[],
   containerPhaseNum: number = 2,
+  specContent?: string,
 ): Task[] {
   const tasks: Task[] = []
 
@@ -82,11 +107,14 @@ export function buildSpecTasks(
         // Build instruction from pattern: explicit instruction template + agent config
         let instruction: string | undefined
         if (patternItem.instruction) {
+          const vpContent = specContent ? extractVerificationPlan(specContent) : null
           instruction = applyPlaceholders(patternItem.instruction, {
             taskSummary,
             phaseName,
             phaseLabel,
-          }).replace(/{issue}/g, String(issueNum))
+          })
+            .replace(/{issue}/g, String(issueNum))
+            .replace(/{verification_plan}/g, vpContent ?? VP_FALLBACK_TEXT)
         }
         if (patternItem.agent) {
           const agentLine = `\nRun: kata review --prompt=${patternItem.agent.prompt}` +

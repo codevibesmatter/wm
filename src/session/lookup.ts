@@ -169,6 +169,14 @@ export function getProjectSubphasePatternsPath(projectRoot?: string): string {
 }
 
 /**
+ * Get path to project verification-tools.md
+ */
+export function getProjectVerificationToolsPath(projectRoot?: string): string {
+  const root = projectRoot ?? findProjectDir()
+  return resolveKataPath(root, 'verification-tools.md')
+}
+
+/**
  * Get path to verification evidence directory
  */
 export function getVerificationDir(projectRoot?: string): string {

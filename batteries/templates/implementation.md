@@ -79,7 +79,7 @@ phases:
   - id: p2
     name: Implement
     container: true
-    subphase_pattern: impl-verify
+    subphase_pattern: impl-test-verify
 
   - id: p3
     name: Close
@@ -184,7 +184,8 @@ P1: Claim
 
 P2: Implement (per-spec-phase)
     ├── IMPL: implement the phase tasks
-    └── VERIFY: run checks, confirm behavior
+    ├── TEST: run process gates (build, typecheck, tests)
+    └── VERIFY: execute spec's Verification Plan against real services
 
 P3: Close
     ├── Final typecheck + tests
@@ -196,14 +197,15 @@ P3: Close
 ## Key Rules
 
 - **Read spec first** — understand ALL phases before writing code
-- **One phase at a time** — complete IMPL + VERIFY before moving on
+- **One phase at a time** — complete IMPL + TEST + VERIFY before moving on
 - **No scope creep** — spec's non-goals are off-limits
 - **Commit per phase** — smaller commits, easier review
 
-## VERIFY Protocol
+## TEST Protocol
 
-Each VERIFY sub-phase follows this exact sequence. Run deterministic checks
-first, then do a spec-checklist review. Do NOT skip steps or reorder.
+Each TEST sub-phase follows this exact sequence. These are **process gates** —
+deterministic checks that the code compiles, tests pass, and the spec checklist
+is satisfied. Do NOT skip steps or reorder.
 
 ### Step 1: Build verification
 
@@ -220,11 +222,11 @@ its YAML, verify each one:
 ```
 For each test_case in the spec phase:
   - Does a test exist that covers this case?
-  - If not, write the test BEFORE marking VERIFY complete.
+  - If not, write the test BEFORE marking TEST complete.
   - Run the test and confirm it passes.
 ```
 
-If no test infrastructure exists, check the spec's Verification Strategy
+If no test infrastructure exists, check the spec's Test Infrastructure
 section for setup instructions.
 
 ### Step 3: Spec-checklist review
@@ -254,8 +256,75 @@ If a build or test fails:
 - Maximum 3 fix attempts per failure before escalating to user
 - Never silence errors, skip tests, or weaken assertions to pass
 
+## VERIFY Protocol
+
+Each VERIFY sub-phase executes the spec's **Verification Plan** against the
+real running system. This is done by a **fresh agent** that has no knowledge
+of the implementation — only the VP steps from the spec.
+
+**Tool reference:** Read the project's `.kata/verification-tools.md` (or
+`.claude/workflows/verification-tools.md`) for project-specific setup: dev server
+command, API base URL, auth, database access, and key endpoints.
+
+### Why a fresh agent?
+
+The implementing agent wrote the code AND the unit tests. It has a mental model
+that may contain blind spots. A fresh agent executing concrete VP steps against
+real services catches integration bugs that unit tests with mocks cannot.
+
+### Step 1: Start dev server
+
+If `dev_server_command` is configured in `wm.yaml`, start the dev server:
+```bash
+# Example: npm run dev &
+# Wait for health endpoint to respond
+```
+
+If the VP steps include server startup instructions, follow those instead.
+
+### Step 2: Execute VP steps
+
+Run each VP step from the spec's `## Verification Plan` section literally:
+
+```
+For each VP step:
+  1. Execute the command (curl, browser navigation, CLI invocation)
+  2. Compare actual output to expected output
+  3. Record: step ID, pass/fail, actual output, expected output
+```
+
+**Rules:**
+- Execute commands EXACTLY as written — do not modify or "improve" them
+- If a step fails, record the failure and continue (don't stop on first failure)
+- If a command requires the dev server, ensure it's running first
+
+### Step 3: Write VP evidence
+
+Write a VP evidence file at `.kata/verification-evidence/vp-{phaseId}-{issueNumber}.json`:
+
+```json
+{
+  "phaseId": "p1",
+  "issueNumber": 123,
+  "timestamp": "2026-02-25T12:00:00.000Z",
+  "steps": [
+    {"id": "VP1", "description": "...", "passed": true, "actual": "..."},
+    {"id": "VP2", "description": "...", "passed": false, "actual": "...", "expected": "..."}
+  ],
+  "allStepsPassed": false
+}
+```
+
+### Step 4: Handle failures
+
+If any VP step failed:
+- Fix the implementation (not the VP steps — those are the source of truth)
+- Re-run the failed VP steps
+- Maximum 3 fix attempts before escalating to user
+- Update the evidence file with final results
+
 ## Stop Conditions
 
-- All spec phases implemented and verified
+- All spec phases implemented, tested, and verified (VP evidence files exist)
 - Changes committed and pushed
 - PR created (or explicitly skipped)
