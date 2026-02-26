@@ -10,9 +10,10 @@
  * claudeProvider.run() with full tool access (no implementation bias).
  */
 
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { claudeProvider } from '../providers/claude.js'
-import { findProjectDir } from '../session/lookup.js'
+import { findProjectDir, getVerificationDir } from '../session/lookup.js'
 import { findSpecFile } from './enter/spec.js'
 import { extractVerificationPlan, parseVpSteps } from './enter/task-factory.js'
 
@@ -52,7 +53,12 @@ function buildVerifyPrompt(issueNumber: number, vpContent: string, vpSteps: Retu
   return [
     `Execute the Verification Plan for issue #${issueNumber}.`,
     '',
-    'IMPORTANT: Do NOT run any kata commands (no kata enter, no kata exit). Just execute the VP steps directly.',
+    '## Setup',
+    'First, enter verify mode:',
+    '```bash',
+    'kata enter verify',
+    '```',
+    'This gives you the structured verify workflow. Then execute each VP step below.',
     '',
     `## VP Steps to Execute (${vpSteps.length} total)`,
     stepList,
@@ -137,16 +143,18 @@ export async function verifyRun(args: string[]): Promise<void> {
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
   console.error('Spawning fresh verification agent...')
 
+  const evidencePath = join(getVerificationDir(cwd), `vp-${parsed.issueNumber}.json`)
+
   try {
-    const result = await claudeProvider.run(prompt, {
+    await claudeProvider.run(prompt, {
       cwd,
       model: parsed.model,
       allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
       maxTurns: parsed.maxTurns ?? 50,
       permissionMode: 'bypassPermissions',
-      // Don't load project settings — hooks (mode-gate, stop-conditions) are designed
-      // for the outer implementation agent, not the verify sub-agent.
-      settingSources: [],
+      // Load project settings so hooks fire — mode-gate auto-injects --session=<ID>
+      // into kata commands, ensuring the sub-agent operates in its own session.
+      settingSources: ['project'],
       timeoutMs: 600_000, // 10 min
       onMessage: parsed.verbose
         ? (msg) => {
@@ -161,23 +169,50 @@ export async function verifyRun(args: string[]): Promise<void> {
           }
         : undefined,
     })
+  } catch (err) {
+    // biome-ignore lint/suspicious/noConsole: intentional CLI output
+    console.error(`verify-run: agent error: ${err instanceof Error ? err.message : String(err)}`)
+    // Don't exit yet — the agent may have written evidence before crashing
+  }
 
-    // Output final agent text
-    process.stdout.write(`${result}\n`)
+  // Read the evidence file — this is the source of truth, not agent text output
+  if (!existsSync(evidencePath)) {
+    // biome-ignore lint/suspicious/noConsole: intentional CLI output
+    console.error(`verify-run: FAILED — no evidence file written at ${evidencePath}`)
+    process.exitCode = 1
+    return
+  }
 
-    // Check for failure markers in output (avoid false positives like "Failed: 0")
-    const failed = /\bFAILED\b|❌|verification plan.*failed/i.test(result) && !/failed:\s*0/i.test(result)
-    if (failed) {
+  try {
+    const evidence = JSON.parse(readFileSync(evidencePath, 'utf-8')) as {
+      issueNumber: number
+      steps: Array<{ id: string; description: string; status: string; details?: string }>
+      allStepsPassed?: boolean
+    }
+
+    const allPassed = evidence.allStepsPassed ?? evidence.steps.every((s) => s.status === 'pass')
+    const passCount = evidence.steps.filter((s) => s.status === 'pass').length
+    const failCount = evidence.steps.length - passCount
+
+    // Output structured result
+    // biome-ignore lint/suspicious/noConsole: intentional CLI output
+    console.log(`VP results: ${passCount} passed, ${failCount} failed out of ${evidence.steps.length} steps`)
+    for (const step of evidence.steps) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.log(`  ${step.id}: ${step.status.toUpperCase()}${step.details ? ` — ${step.details}` : ''}`)
+    }
+
+    if (allPassed) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error('verify-run: Verification PASSED')
+    } else {
       // biome-ignore lint/suspicious/noConsole: intentional CLI output
       console.error('verify-run: Verification FAILED')
       process.exitCode = 1
-    } else {
-      // biome-ignore lint/suspicious/noConsole: intentional CLI output
-      console.error('verify-run: Verification PASSED')
     }
   } catch (err) {
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.error(`verify-run error: ${err instanceof Error ? err.message : String(err)}`)
+    console.error(`verify-run: failed to read evidence: ${err instanceof Error ? err.message : String(err)}`)
     process.exitCode = 1
   }
 }

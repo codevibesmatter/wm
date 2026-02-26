@@ -1,0 +1,175 @@
+/**
+ * Verify Sub-Agent — focused eval for kata verify-run command
+ *
+ * Tests ONLY the verify sub-agent, not the full implementation pipeline.
+ * Fixture is pre-built with a working health endpoint so the agent's
+ * only job is to run verify-run and confirm VP steps pass.
+ *
+ * Asserts:
+ * 1. Verification evidence file written (vp-100.json)
+ * 2. All VP steps passed in the evidence
+ * 3. Sub-agent entered verify mode (session state)
+ */
+
+import type { EvalScenario } from '../harness.js'
+import { assertVerifyEvidenceExists } from '../assertions.js'
+import type { EvalCheckpoint, EvalContext } from '../harness.js'
+
+// ─── Pre-built implementation files ─────────────────────────────────────────
+
+const HEALTH_TS = `const startTime = Date.now()
+
+export function getHealthResponse(): Response {
+  const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000)
+  const body = {
+    status: 'ok' as const,
+    timestamp: new Date().toISOString(),
+    uptime_seconds: uptimeSeconds,
+  }
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+`
+
+const SERVER_TS = `import {
+  createStartHandler,
+  defaultStreamHandler,
+} from '@tanstack/react-start/server'
+import { getHealthResponse } from './api/health'
+
+const startHandler = createStartHandler(defaultStreamHandler)
+
+export default {
+  async fetch(request: Request) {
+    const url = new URL(request.url)
+    if (url.pathname === '/api/health') {
+      return getHealthResponse()
+    }
+    return startHandler(request)
+  },
+}
+`
+
+const HEALTH_TEST_TS = `import { describe, it, expect } from 'vitest'
+import { getHealthResponse } from './health'
+
+describe('GET /api/health', () => {
+  it('returns 200 with status ok and valid timestamp', async () => {
+    const response = getHealthResponse()
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.status).toBe('ok')
+    const parsed = new Date(body.timestamp)
+    expect(parsed.toISOString()).toBe(body.timestamp)
+  })
+
+  it('includes uptime_seconds as non-negative integer', async () => {
+    const body = await getHealthResponse().json()
+    expect(typeof body.uptime_seconds).toBe('number')
+    expect(body.uptime_seconds).toBeGreaterThanOrEqual(0)
+    expect(Number.isInteger(body.uptime_seconds)).toBe(true)
+  })
+
+  it('uptime_seconds is non-decreasing across calls', async () => {
+    const a = await getHealthResponse().json()
+    const b = await getHealthResponse().json()
+    expect(b.uptime_seconds).toBeGreaterThanOrEqual(a.uptime_seconds)
+  })
+})
+`
+
+const VERIFICATION_TOOLS_MD = `# Verification Tools
+
+## Dev Server
+- **Start:** \`npm run dev\`
+- **URL:** http://localhost:3000
+- **Health:** http://localhost:3000 (check for 200)
+
+## API
+- **Base URL:** http://localhost:3000
+- **Auth:** None required for health endpoint
+
+## Key Endpoints
+- GET /api/health — health check (status, timestamp, uptime_seconds)
+`
+
+// ─── Assertions ─────────────────────────────────────────────────────────────
+
+function assertEvidenceAllPassed(issueNumber: number): EvalCheckpoint {
+  return {
+    name: `evidence vp-${issueNumber}.json has all steps passed`,
+    assert(ctx: EvalContext) {
+      for (const base of ['.kata/verification-evidence', '.claude/verification-evidence']) {
+        const path = `${base}/vp-${issueNumber}.json`
+        if (!ctx.fileExists(path)) continue
+        try {
+          const evidence = JSON.parse(ctx.readFile(path)) as {
+            steps: Array<{ id: string; status: string }>
+            allStepsPassed?: boolean
+          }
+          const allPassed = evidence.allStepsPassed ?? evidence.steps.every((s) => s.status === 'pass')
+          if (!allPassed) {
+            const failed = evidence.steps.filter((s) => s.status !== 'pass')
+            return `VP steps failed: ${failed.map((s) => s.id).join(', ')}`
+          }
+          return null
+        } catch (err) {
+          return `Failed to parse evidence: ${err}`
+        }
+      }
+      return `No evidence file found for issue #${issueNumber}`
+    },
+  }
+}
+
+function assertVerifySessionCreated(): EvalCheckpoint {
+  return {
+    name: 'verify sub-agent created a verify-mode session',
+    assert(ctx: EvalContext) {
+      for (const base of ['.kata/sessions', '.claude/sessions']) {
+        const sessions = ctx.listDir(base)
+        for (const sid of sessions) {
+          try {
+            const state = JSON.parse(ctx.readFile(`${base}/${sid}/state.json`))
+            if (state.currentMode === 'verify') return null
+          } catch {
+            // skip
+          }
+        }
+      }
+      return 'No session with currentMode=verify found'
+    },
+  }
+}
+
+// ─── Scenario ───────────────────────────────────────────────────────────────
+
+export const verifySubagentScenario: EvalScenario = {
+  id: 'verify-subagent',
+  name: 'Verify sub-agent (focused)',
+  fixture: 'tanstack-start',
+  fixtureSetup: [
+    // Pre-create implementation files so the health endpoint already works
+    'mkdir -p src/api',
+    `cat > src/api/health.ts << 'HEREDOC'\n${HEALTH_TS}HEREDOC`,
+    `cat > src/server.ts << 'HEREDOC'\n${SERVER_TS}HEREDOC`,
+    `cat > src/api/health.test.ts << 'HEREDOC'\n${HEALTH_TEST_TS}HEREDOC`,
+    `cat > .claude/workflows/verification-tools.md << 'HEREDOC'\n${VERIFICATION_TOOLS_MD}HEREDOC`,
+    // Verify the build works
+    'npm run build 2>&1 | tail -5',
+  ],
+  prompt:
+    'Run `kata verify-run --issue=100` to execute the Verification Plan for the health endpoint. ' +
+    'Use a Bash timeout of 600000ms since the verify agent needs several minutes to complete. ' +
+    'After it finishes, check the evidence file at .claude/verification-evidence/vp-100.json ' +
+    'and report the results.',
+  maxTurns: 15,
+  timeoutMs: 10 * 60 * 1000,
+  checkpoints: [
+    assertVerifyEvidenceExists(100),
+    assertEvidenceAllPassed(100),
+    assertVerifySessionCreated(),
+  ],
+}
