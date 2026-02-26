@@ -1,13 +1,18 @@
 /**
- * kata verify-run — spawn a fresh Claude agent to execute the spec's Verification Plan.
+ * kata verify-run — spawn a fresh Claude agent to execute a Verification Plan.
  *
  * Usage:
- *   kata verify-run --issue=N              # Run all VP steps for issue N
+ *   kata verify-run --issue=N              # Run all VP steps from spec for issue N
  *   kata verify-run --issue=N --verbose    # Stream agent output to stderr
  *   kata verify-run --issue=N --dry-run    # Show prompt without running
+ *   kata verify-run --plan-file=PATH       # Run VP steps from a standalone plan file
  *
- * Called from implementation P3 VERIFY phase. Spawns a fresh agent via
- * claudeProvider.run() with full tool access (no implementation bias).
+ * Supports two input modes:
+ *   --issue=N      Finds the spec for issue N and extracts ## Verification Plan
+ *   --plan-file=P  Reads VP steps directly from a markdown file (### VPn: format)
+ *
+ * Called from implementation P3 or task P2 VERIFY phase. Spawns a fresh agent
+ * via claudeProvider.run() with full tool access (no implementation bias).
  */
 
 import { existsSync, readFileSync } from 'node:fs'
@@ -19,6 +24,7 @@ import { extractVerificationPlan, parseVpSteps } from './enter/task-factory.js'
 
 interface VerifyRunArgs {
   issueNumber?: number
+  planFile?: string
   verbose: boolean
   dryRun: boolean
   model?: string
@@ -31,6 +37,8 @@ function parseArgs(args: string[]): VerifyRunArgs {
   for (const arg of args) {
     if (arg.startsWith('--issue=')) {
       result.issueNumber = Number.parseInt(arg.slice('--issue='.length), 10)
+    } else if (arg.startsWith('--plan-file=')) {
+      result.planFile = arg.slice('--plan-file='.length)
     } else if (arg === '--verbose') {
       result.verbose = true
     } else if (arg === '--dry-run') {
@@ -80,52 +88,125 @@ function buildVerifyPrompt(issueNumber: number, vpContent: string, vpSteps: Retu
   ].join('\n')
 }
 
+function buildVerifyPromptFromPlanFile(planFile: string, vpContent: string, vpSteps: ReturnType<typeof parseVpSteps>): string {
+  const stepList = vpSteps
+    .map((s) => `- ${s.id}: ${s.title}`)
+    .join('\n')
+
+  // Derive a slug from the plan file name for the evidence file
+  const evidenceSlug = planFile.replace(/^.*\//, '').replace(/\.md$/, '')
+
+  return [
+    'Execute the Verification Plan from the task verification file.',
+    '',
+    '## Setup',
+    'First, enter verify mode:',
+    '```bash',
+    'kata enter verify',
+    '```',
+    'This gives you the structured verify workflow. Then execute each VP step below.',
+    '',
+    `## VP Steps to Execute (${vpSteps.length} total)`,
+    stepList,
+    '',
+    '## Full Verification Plan',
+    vpContent,
+    '',
+    '## Repair Loop',
+    'If any VP step fails:',
+    '1. Diagnose the failure — read the error, identify root cause in implementation code',
+    '2. Fix the implementation (NOT the VP steps — those are the source of truth)',
+    '3. Re-run the failed VP step(s)',
+    '4. Maximum 3 repair cycles before reporting failure',
+    '',
+    '## Evidence',
+    `When all VP steps pass, write evidence to .claude/verification-evidence/vp-task-${evidenceSlug}.json with:`,
+    '- timestamp (ISO 8601), planFile, steps array (id, description, status, details), allStepsPassed boolean',
+    'Then report results summary.',
+  ].join('\n')
+}
+
 export async function verifyRun(args: string[]): Promise<void> {
   const parsed = parseArgs(args)
 
-  if (!parsed.issueNumber) {
+  if (!parsed.issueNumber && !parsed.planFile) {
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
     console.error('Usage: kata verify-run --issue=N [--verbose] [--dry-run] [--model=MODEL]')
+    // biome-ignore lint/suspicious/noConsole: intentional CLI output
+    console.error('       kata verify-run --plan-file=PATH [--verbose] [--dry-run] [--model=MODEL]')
     process.exitCode = 1
     return
   }
 
-  // Find and read spec
-  const specPath = findSpecFile(parsed.issueNumber)
-  if (!specPath) {
-    // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.error(`No spec found for issue #${parsed.issueNumber}`)
-    process.exitCode = 1
-    return
-  }
+  let vpContent: string
+  let vpSteps: ReturnType<typeof parseVpSteps>
+  let prompt: string
+  let evidenceSlug: string
+  let sourceLabel: string
 
-  const specContent = readFileSync(specPath, 'utf-8')
-  const vpContent = extractVerificationPlan(specContent)
-  if (!vpContent) {
-    // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.error(`No ## Verification Plan section found in ${specPath}`)
-    process.exitCode = 1
-    return
-  }
+  if (parsed.planFile) {
+    // --plan-file mode: read VP steps directly from a markdown file
+    if (!existsSync(parsed.planFile)) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error(`Plan file not found: ${parsed.planFile}`)
+      process.exitCode = 1
+      return
+    }
 
-  const vpSteps = parseVpSteps(vpContent)
-  if (vpSteps.length === 0) {
-    // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.error(`No ### VPn: steps found in Verification Plan (${specPath})`)
-    process.exitCode = 1
-    return
+    const planContent = readFileSync(parsed.planFile, 'utf-8')
+
+    // The plan file IS the verification plan — parse VP steps directly from it
+    vpSteps = parseVpSteps(planContent)
+    if (vpSteps.length === 0) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error(`No ### VPn: steps found in plan file (${parsed.planFile})`)
+      process.exitCode = 1
+      return
+    }
+
+    vpContent = planContent
+    evidenceSlug = `task-${parsed.planFile.replace(/^.*\//, '').replace(/\.md$/, '')}`
+    sourceLabel = `plan-file: ${parsed.planFile}`
+    prompt = buildVerifyPromptFromPlanFile(parsed.planFile, vpContent, vpSteps)
+  } else {
+    // --issue mode: find spec and extract ## Verification Plan
+    const specPath = findSpecFile(parsed.issueNumber!)
+    if (!specPath) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error(`No spec found for issue #${parsed.issueNumber}`)
+      process.exitCode = 1
+      return
+    }
+
+    const specContent = readFileSync(specPath, 'utf-8')
+    const extracted = extractVerificationPlan(specContent)
+    if (!extracted) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error(`No ## Verification Plan section found in ${specPath}`)
+      process.exitCode = 1
+      return
+    }
+
+    vpSteps = parseVpSteps(extracted)
+    if (vpSteps.length === 0) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error(`No ### VPn: steps found in Verification Plan (${specPath})`)
+      process.exitCode = 1
+      return
+    }
+
+    vpContent = extracted
+    evidenceSlug = `${parsed.issueNumber}`
+    sourceLabel = `issue #${parsed.issueNumber}, spec: ${specPath}`
+    prompt = buildVerifyPrompt(parsed.issueNumber!, vpContent, vpSteps)
   }
 
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
-  console.error(`verify-run: issue #${parsed.issueNumber}, ${vpSteps.length} VP steps`)
-  // biome-ignore lint/suspicious/noConsole: intentional CLI output
-  console.error(`  Spec: ${specPath}`)
+  console.error(`verify-run: ${sourceLabel}, ${vpSteps.length} VP steps`)
   for (const step of vpSteps) {
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
     console.error(`  ${step.id}: ${step.title}`)
   }
-
-  const prompt = buildVerifyPrompt(parsed.issueNumber, vpContent, vpSteps)
 
   if (parsed.dryRun) {
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
@@ -143,7 +224,7 @@ export async function verifyRun(args: string[]): Promise<void> {
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
   console.error('Spawning fresh verification agent...')
 
-  const evidencePath = join(getVerificationDir(cwd), `vp-${parsed.issueNumber}.json`)
+  const evidencePath = join(getVerificationDir(cwd), `vp-${evidenceSlug}.json`)
 
   try {
     await claudeProvider.run(prompt, {
