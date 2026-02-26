@@ -223,11 +223,22 @@ export async function verifyRun(args: string[]): Promise<void> {
 
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
   console.error('Spawning fresh verification agent...')
+  // biome-ignore lint/suspicious/noConsole: intentional CLI output
+  console.error(`  cwd: ${cwd}`)
+  // biome-ignore lint/suspicious/noConsole: intentional CLI output
+  console.error(`  model: ${parsed.model ?? '(default)'}`)
+  // biome-ignore lint/suspicious/noConsole: intentional CLI output
+  console.error(`  maxTurns: ${parsed.maxTurns ?? 50}`)
 
   const evidencePath = join(getVerificationDir(cwd), `vp-${evidenceSlug}.json`)
+  // biome-ignore lint/suspicious/noConsole: intentional CLI output
+  console.error(`  evidence: ${evidencePath}`)
+
+  let agentOutput = ''
+  let agentError: Error | undefined
 
   try {
-    await claudeProvider.run(prompt, {
+    agentOutput = await claudeProvider.run(prompt, {
       cwd,
       model: parsed.model,
       allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
@@ -251,8 +262,9 @@ export async function verifyRun(args: string[]): Promise<void> {
         : undefined,
     })
   } catch (err) {
+    agentError = err instanceof Error ? err : new Error(String(err))
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.error(`verify-run: agent error: ${err instanceof Error ? err.message : String(err)}`)
+    console.error(`verify-run: agent error: ${agentError.message}`)
     // Don't exit yet — the agent may have written evidence before crashing
   }
 
@@ -260,6 +272,41 @@ export async function verifyRun(args: string[]): Promise<void> {
   if (!existsSync(evidencePath)) {
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
     console.error(`verify-run: FAILED — no evidence file written at ${evidencePath}`)
+    if (agentError) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error('')
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error('Diagnosis: The verification agent failed to start or crashed before writing evidence.')
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error(`  Error: ${agentError.message}`)
+      if (agentError.message.includes('nesting') || agentError.message.includes('CLAUDECODE') || agentError.message.includes('another Claude Code session')) {
+        // biome-ignore lint/suspicious/noConsole: intentional CLI output
+        console.error('')
+        // biome-ignore lint/suspicious/noConsole: intentional CLI output
+        console.error('This looks like an SDK nesting issue. The verify agent cannot spawn')
+        // biome-ignore lint/suspicious/noConsole: intentional CLI output
+        console.error('inside another Claude Code session without proper env clearing.')
+        // biome-ignore lint/suspicious/noConsole: intentional CLI output
+        console.error('Try running verify-run directly:')
+        // biome-ignore lint/suspicious/noConsole: intentional CLI output
+        console.error(`  node <kata-path>/dist/index.js verify-run ${parsed.planFile ? `--plan-file=${parsed.planFile}` : `--issue=${parsed.issueNumber}`} --verbose`)
+      }
+    } else if (!agentOutput || agentOutput.trim().length === 0) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error('')
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error('Diagnosis: Agent produced no output and no evidence — likely a silent spawn failure.')
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error('Troubleshooting:')
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error('  1. Re-run with --verbose to see agent output')
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error('  2. Try --dry-run to verify the prompt is correct')
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error('  3. Check that @anthropic-ai/claude-agent-sdk is installed')
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error(`  4. Try direct invocation: node <kata-path>/dist/index.js verify-run ${parsed.planFile ? `--plan-file=${parsed.planFile}` : `--issue=${parsed.issueNumber}`} --verbose`)
+    }
     process.exitCode = 1
     return
   }

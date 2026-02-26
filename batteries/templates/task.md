@@ -162,8 +162,20 @@ phases:
           3. Fixes implementation if VP steps fail (repair loop, max 3 cycles)
           4. Writes VP evidence JSON
 
-          If verify-run exits 0: all VP steps passed.
-          If verify-run exits 1: verification failed — review output for details.
+          **Interpreting results:**
+          - Exit 0: all VP steps passed — proceed to next phase
+          - Exit 1 with output: verification failed — review failures and fix
+          - Exit 1 with no output: spawn failure — see troubleshooting below
+
+          **Troubleshooting silent failures:**
+          If verify-run exits 1 with no output or evidence:
+          1. First try `--dry-run` to confirm the plan file has valid VP steps
+          2. Re-run with `--verbose` to see agent stderr
+          3. If still silent, try direct node invocation (bypasses shell wrapper):
+             `node <path-to-kata>/dist/index.js verify-run --plan-file=<path> --verbose`
+          4. As last resort, use the Task tool to spawn a fresh agent that
+             executes the VP steps manually (same fresh-eyes principle)
+
           Then: Mark this task completed via TaskUpdate
 
   - id: p3
