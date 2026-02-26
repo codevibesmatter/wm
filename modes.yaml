@@ -192,6 +192,17 @@ modes:
       ok_to_ask:
         - "Genuinely ambiguous request"
 
+  verify:
+    name: "Verify"
+    description: "Execute Verification Plan steps against real running system"
+    issue_handling: "none"
+    stop_conditions:
+      - tasks_complete
+      - verification_plan_executed
+    template: "verify.md"
+    workflow_prefix: "VF"
+    category: system
+
   stop-hook-test:
     name: "Stop Hook Test"
     description: "Eval-only mode that exercises each stop condition in sequence"

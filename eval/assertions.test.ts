@@ -654,9 +654,9 @@ function setupTestTasks() {
       metadata: { workflowId: 'GH#100', issueNumber: 100, originalId: 'p2.1:impl' },
     },
     {
-      id: '2', subject: 'GH#100: P2.1: VERIFY - Health endpoint', description: 'Run: kata verify-phase P2.1 --issue=100',
+      id: '2', subject: 'GH#100: P2.1: CHECK - Health endpoint', description: 'Run: kata check-phase P2.1 --issue=100',
       activeForm: 'Verifying', status: 'completed', blocks: [], blockedBy: ['1'],
-      metadata: { workflowId: 'GH#100', issueNumber: 100, originalId: 'p2.1:verify' },
+      metadata: { workflowId: 'GH#100', issueNumber: 100, originalId: 'p2.1:check' },
     },
     {
       id: '3', subject: 'GH#100: P2.1: REVIEW - Health endpoint',
@@ -689,9 +689,9 @@ describe('assertNativeTaskHasOriginalId', () => {
     expect(result).toBeNull()
   })
 
-  it('passes for verify task', async () => {
+  it('passes for check task', async () => {
     const ctx = mockContext({ sessionId: TEST_SESSION_ID })
-    const result = await assertNativeTaskHasOriginalId('p2.1:verify').assert(ctx)
+    const result = await assertNativeTaskHasOriginalId('p2.1:check').assert(ctx)
     expect(result).toBeNull()
   })
 
@@ -712,13 +712,13 @@ describe('assertNativeTaskHasOriginalId', () => {
 describe('assertNativeTaskHasInstruction', () => {
   it('fails when no sessionId', async () => {
     const ctx = mockContext({})
-    const result = await assertNativeTaskHasInstruction('verify-phase').assert(ctx)
+    const result = await assertNativeTaskHasInstruction('check-phase').assert(ctx)
     expect(result).toContain('No sessionId')
   })
 
   it('passes when description matches string', async () => {
     const ctx = mockContext({ sessionId: TEST_SESSION_ID })
-    const result = await assertNativeTaskHasInstruction('verify-phase').assert(ctx)
+    const result = await assertNativeTaskHasInstruction('check-phase').assert(ctx)
     expect(result).toBeNull()
   })
 
@@ -736,17 +736,15 @@ describe('assertNativeTaskHasInstruction', () => {
 })
 
 describe('implTaskGenPresets', () => {
-  it('returns 7 checkpoints', () => {
+  it('returns 5 checkpoints', () => {
     const presets = implTaskGenPresets()
-    expect(presets).toHaveLength(7)
+    expect(presets).toHaveLength(5)
     expect(presets.map((p) => p.name)).toEqual([
       'native task exists with originalId: p2.1:impl',
       'native task exists with originalId: p2.1:test',
-      'native task exists with originalId: p2.1:verify',
       'native task exists with originalId: p2.2:impl',
       'native task exists with originalId: p2.2:test',
-      'native task exists with originalId: p2.2:verify',
-      'native task has instruction: verify-phase',
+      'native task has instruction: check-phase',
     ])
   })
 })

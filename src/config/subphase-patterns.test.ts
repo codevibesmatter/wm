@@ -80,11 +80,11 @@ describe('subphasePatternSchema (step-level)', () => {
       title_template: 'VERIFY',
       todo_template: 'Verify',
       active_form: 'Verifying',
-      instruction: 'Run: kata verify-phase {phase_label} --issue={issue}',
+      instruction: 'Run: kata check-phase {phase_label} --issue={issue}',
     })
     expect(result.success).toBe(true)
     if (result.success) {
-      expect(result.data.instruction).toBe('Run: kata verify-phase {phase_label} --issue={issue}')
+      expect(result.data.instruction).toBe('Run: kata check-phase {phase_label} --issue={issue}')
     }
   })
 
@@ -258,7 +258,7 @@ describe('loadSubphasePatterns 2-tier merge', () => {
     expect(config.subphase_patterns['impl-verify']).toBeDefined()
     expect(config.subphase_patterns['impl-verify'].steps).toHaveLength(2)
     expect(config.subphase_patterns['impl-verify'].steps[0].id_suffix).toBe('impl')
-    expect(config.subphase_patterns['impl-verify'].steps[1].id_suffix).toBe('verify')
+    expect(config.subphase_patterns['impl-verify'].steps[1].id_suffix).toBe('check')
   })
 
   it('project config overrides a package pattern', async () => {
@@ -436,7 +436,7 @@ describe('loadSubphasePatterns 2-tier merge', () => {
 
 // ── buildSpecTasks instruction/agent propagation ──
 
-import { buildSpecTasks, extractVerificationPlan } from '../commands/enter/task-factory.js'
+import { buildSpecTasks, extractVerificationPlan, parseVpSteps } from '../commands/enter/task-factory.js'
 
 const sampleSpecPhases = [
   { id: 'auth', name: 'Authentication', tasks: ['Add login endpoint'] },
@@ -459,14 +459,14 @@ describe('buildSpecTasks instruction/agent propagation', () => {
         active_form: 'Verifying {phase_name}',
         labels: [],
         depends_on_previous: true,
-        instruction: 'Run: kata verify-phase {phase_label} --issue={issue}',
+        instruction: 'Run: kata check-phase {phase_label} --issue={issue}',
       },
     ]
 
     const tasks = buildSpecTasks(sampleSpecPhases, 42, pattern)
     const verifyTask = tasks.find((t) => t.id === 'p2.1:verify')
     expect(verifyTask).toBeDefined()
-    expect(verifyTask!.instruction).toBe('Run: kata verify-phase P2.1 --issue=42')
+    expect(verifyTask!.instruction).toBe('Run: kata check-phase P2.1 --issue=42')
   })
 
   it('propagates agent config as kata review command', () => {
@@ -587,6 +587,140 @@ describe('extractVerificationPlan', () => {
   })
 })
 
+// ── parseVpSteps ──
+
+describe('parseVpSteps', () => {
+  it('extracts multiple VP steps from VP content', () => {
+    const vpContent = [
+      '## Verification Plan',
+      '',
+      '### VP1: Health check endpoint',
+      '',
+      'Steps:',
+      '1. `curl http://localhost:3000/health`',
+      '2. Confirm 200 OK response',
+      'Expected: JSON with status "ok"',
+      '',
+      '### VP2: Login flow works',
+      '',
+      'Steps:',
+      '1. POST /api/login with valid credentials',
+      '2. Confirm JWT token returned',
+      'Expected: 200 with token',
+      '',
+      '### VP3: Protected route requires auth',
+      '',
+      'Steps:',
+      '1. GET /api/protected without token',
+      '2. Confirm 401 Unauthorized',
+      'Expected: 401 response',
+    ].join('\n')
+
+    const steps = parseVpSteps(vpContent)
+    expect(steps).toHaveLength(3)
+
+    expect(steps[0].id).toBe('VP1')
+    expect(steps[0].title).toBe('Health check endpoint')
+    expect(steps[0].instruction).toContain('curl http://localhost:3000/health')
+
+    expect(steps[1].id).toBe('VP2')
+    expect(steps[1].title).toBe('Login flow works')
+    expect(steps[1].instruction).toContain('POST /api/login')
+
+    expect(steps[2].id).toBe('VP3')
+    expect(steps[2].title).toBe('Protected route requires auth')
+    expect(steps[2].instruction).toContain('401 Unauthorized')
+  })
+
+  it('returns empty array when no VP step headings found', () => {
+    const vpContent = [
+      '## Verification Plan',
+      '',
+      'Some general verification notes without VP step headings.',
+      '',
+      'Just text, no ### VPn: sections.',
+    ].join('\n')
+
+    const steps = parseVpSteps(vpContent)
+    expect(steps).toHaveLength(0)
+  })
+
+  it('returns empty array for empty string', () => {
+    expect(parseVpSteps('')).toHaveLength(0)
+  })
+
+  it('handles single VP step', () => {
+    const vpContent = [
+      '### VP1: Smoke test',
+      '',
+      'Steps:',
+      '1. `curl http://localhost:3000`',
+      'Expected: 200',
+    ].join('\n')
+
+    const steps = parseVpSteps(vpContent)
+    expect(steps).toHaveLength(1)
+    expect(steps[0].id).toBe('VP1')
+    expect(steps[0].title).toBe('Smoke test')
+    expect(steps[0].instruction).toContain('curl http://localhost:3000')
+  })
+
+  it('preserves full instruction content including heading', () => {
+    const vpContent = [
+      '### VP1: Check API',
+      'Line 1',
+      'Line 2',
+      '',
+      '### VP2: Check DB',
+      'Line 3',
+    ].join('\n')
+
+    const steps = parseVpSteps(vpContent)
+    expect(steps[0].instruction).toMatch(/^### VP1: Check API/)
+    expect(steps[0].instruction).toContain('Line 1')
+    expect(steps[0].instruction).toContain('Line 2')
+    expect(steps[0].instruction).not.toContain('Line 3')
+
+    expect(steps[1].instruction).toMatch(/^### VP2: Check DB/)
+    expect(steps[1].instruction).toContain('Line 3')
+  })
+
+  it('handles non-sequential VP numbers', () => {
+    const vpContent = [
+      '### VP2: Second step',
+      'Content 2',
+      '',
+      '### VP5: Fifth step',
+      'Content 5',
+    ].join('\n')
+
+    const steps = parseVpSteps(vpContent)
+    expect(steps).toHaveLength(2)
+    expect(steps[0].id).toBe('VP2')
+    expect(steps[1].id).toBe('VP5')
+  })
+
+  it('ignores non-VP headings', () => {
+    const vpContent = [
+      '### Overview',
+      'Some overview text.',
+      '',
+      '### VP1: Real step',
+      'Step content.',
+      '',
+      '### Notes',
+      'Some notes.',
+    ].join('\n')
+
+    const steps = parseVpSteps(vpContent)
+    expect(steps).toHaveLength(1)
+    expect(steps[0].id).toBe('VP1')
+    // VP1 content goes up to ### Notes (next heading is not a VP heading,
+    // but parseVpSteps splits on ### VPn: only)
+    expect(steps[0].instruction).toContain('Step content.')
+  })
+})
+
 // ── buildSpecTasks VP injection ──
 
 describe('buildSpecTasks verification plan injection', () => {
@@ -605,7 +739,7 @@ describe('buildSpecTasks verification plan injection', () => {
       active_form: 'Testing {phase_name}',
       labels: [] as string[],
       depends_on_previous: true,
-      instruction: 'Run: kata verify-phase {phase_label} --issue={issue}',
+      instruction: 'Run: kata check-phase {phase_label} --issue={issue}',
     },
     {
       id_suffix: 'verify',

@@ -11,14 +11,14 @@
  * The impl-review-verify pattern has:
  * - impl step (no instruction)
  * - review step (agent: claude, prompt: code-review)
- * - verify step (instruction: kata verify-phase)
+ * - verify step (instruction: kata check-phase)
  *
  * Asserts:
  * 1. Standard workflow checks (mode, commit, clean tree, can-exit)
  * 2. Task discipline (pre-created tasks used, all completed, order respected)
  * 3. Review step exists (p2.1:review, p2.2:review) — custom pattern expanded
  * 4. Agent config carried through (kata review --prompt=code-review)
- * 5. Verify instruction carried through (verify-phase)
+ * 5. Check instruction carried through (check-phase)
  */
 
 import type { EvalScenario } from '../harness.js'
@@ -54,7 +54,7 @@ subphase_patterns:
         active_form: "Verifying {phase_name}"
         labels: [verify]
         depends_on_previous: true
-        instruction: "Run: kata verify-phase {phase_label} --issue={issue}"
+        instruction: "Run: kata check-phase {phase_label} --issue={issue}"
 `.trim()
 
 export const implTaskGenCustomScenario: EvalScenario = {
@@ -87,7 +87,7 @@ export const implTaskGenCustomScenario: EvalScenario = {
     assertNativeTaskHasOriginalId('p2.2:verify'),
     // Agent config carried through to task instruction
     assertNativeTaskHasInstruction(/kata review --prompt=code-review/),
-    // Verify instruction carried through
-    assertNativeTaskHasInstruction(/verify-phase/),
+    // Check instruction carried through
+    assertNativeTaskHasInstruction(/check-phase/),
   ],
 }

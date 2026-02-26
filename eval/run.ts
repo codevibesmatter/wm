@@ -42,13 +42,15 @@ import { planningInterviewScenario } from './scenarios/planning-interview.js'
 import { implTaskGenDefaultScenario } from './scenarios/impl-task-gen-default.js'
 import { implTaskGenCustomScenario } from './scenarios/impl-task-gen-custom.js'
 import { impl3StepVerifyScenario } from './scenarios/impl-3step-verify.js'
+import { implE2eVerifyScenario } from './scenarios/impl-e2e-verify.js'
+import { verifySubagentScenario } from './scenarios/verify-subagent.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const TRANSCRIPT_DIR = resolve(__dirname, '../eval-transcripts')
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
-const scenarios = [askUserPauseScenario, modeEntryScenario, onboardScenario, taskModeScenario, taskDisciplineScenario, stopHookEnforcementScenario, stopHookTestScenario, hookLifecycleScenario, planningModeScenario, planningInterviewScenario, planningAuthScenario, implAuthScenario, implTaskGenDefaultScenario, implTaskGenCustomScenario, impl3StepVerifyScenario, researchModeScenario, liveHookVerifyScenario, liveTaskScenario, liveResearchScenario, liveTaskDisciplineScenario]
+const scenarios = [askUserPauseScenario, modeEntryScenario, onboardScenario, taskModeScenario, taskDisciplineScenario, stopHookEnforcementScenario, stopHookTestScenario, hookLifecycleScenario, planningModeScenario, planningInterviewScenario, planningAuthScenario, implAuthScenario, implTaskGenDefaultScenario, implTaskGenCustomScenario, impl3StepVerifyScenario, implE2eVerifyScenario, verifySubagentScenario, researchModeScenario, liveHookVerifyScenario, liveTaskScenario, liveResearchScenario, liveTaskDisciplineScenario]
 
 /** Scenarios that require --project (no built-in fixture) */
 const LIVE_SCENARIO_IDS = new Set(['live-hook-verify', 'live-task', 'live-research', 'live-task-discipline', 'stop-hook-test'])

@@ -28,7 +28,8 @@ import { batteries } from './commands/batteries.js'
 import { projects } from './commands/projects.js'
 import { config as configCommand } from './commands/config.js'
 import { modes } from './commands/modes.js'
-import { verifyPhase } from './commands/verify-phase.js'
+import { checkPhase } from './commands/check-phase.js'
+import { verifyRun } from './commands/verify-run.js'
 import { providers as providersCommand } from './commands/providers.js'
 import { review as reviewCommand } from './commands/review.js'
 import { existsSync, readFileSync } from 'node:fs'
@@ -149,8 +150,18 @@ async function main() {
         await modes(commandArgs)
         break
 
+      case 'check-phase':
+        await checkPhase(commandArgs)
+        break
+
       case 'verify-phase':
-        await verifyPhase(commandArgs)
+        // Deprecated alias — use check-phase instead
+        console.error('DEPRECATED: kata verify-phase is renamed to kata check-phase')
+        await checkPhase(commandArgs)
+        break
+
+      case 'verify-run':
+        await verifyRun(commandArgs)
         break
 
       case 'providers':
@@ -213,7 +224,8 @@ Usage:
   kata prompt [--session=SESSION_ID]             Output current mode prompt
   kata init [--session=SESSION_ID] [--force]     Initialize session state
   kata prime [--session=ID] [--hook-json]        Output context injection block
-  kata verify-phase <phase-id> [--issue=N] [--force]  Run per-phase verification
+  kata check-phase <phase-id> [--issue=N] [--force]   Run per-phase process gates
+  kata verify-run --issue=N [--verbose] [--dry-run]   Spawn fresh agent to execute VP steps
   kata validate-spec --issue=N | path.md         Validate spec phases format
   kata validate-template <path> [--json]         Validate a template file
   kata init-template <path> [options]            Create a new template file

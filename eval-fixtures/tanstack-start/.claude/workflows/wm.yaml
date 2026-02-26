@@ -1,6 +1,6 @@
 project:
   name: tanstack-start-fixture
-  test_command: vitest run
+  test_command: npx vitest run
   ci: null
   dev_server_command: npm run dev
   dev_server_health: http://localhost:3000

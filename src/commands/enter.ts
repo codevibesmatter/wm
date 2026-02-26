@@ -641,7 +641,7 @@ export async function enter(args: string[]): Promise<void> {
         ? Number.parseInt(containerPhase.id.replace('p', ''), 10)
         : 2
 
-      // Create BOTH orchestration tasks (P0, P1, P3, P4) AND spec subphase tasks (P2.X)
+      // Create BOTH orchestration tasks (P0, P1, P3, P4, ...) AND spec subphase tasks (P2.X)
       const orchTasks = modeConfig.template
         ? buildPhaseTasks(modeConfig.template, workflowId, issueNum)
         : []
@@ -661,7 +661,7 @@ export async function enter(args: string[]): Promise<void> {
         firstImpl.depends_on.push(lastP1TaskId)
       }
 
-      // - First task of P3 (Close) depends on last P2.X:verify
+      // - First task after container (P3) depends on last P2.X subphase task
       //   P3 may be expanded into steps, so find the first task with id 'p3' or 'p3:*'
       const lastPatternSuffix = resolvedSubphasePattern[resolvedSubphasePattern.length - 1]?.id_suffix ?? 'verify'
       const lastVerifyId = `p${containerPhaseNum}.${specPhases.length}:${lastPatternSuffix}`

@@ -1,30 +1,30 @@
 /**
- * Implementation impl-test + verify-run — 2-step per phase + final VP execution
+ * E2E Implementation + Verify — full run with LLM judge evaluation
  *
- * End-to-end test of the implementation flow:
+ * End-to-end test of the complete implementation pipeline:
  * - P2.X: IMPL + TEST per spec phase (process gates via kata check-phase)
  * - P3: VERIFY — fresh agent executes full Verification Plan via kata verify-run
+ * - LLM-as-judge evaluates the complete transcript
  *
  * Uses tanstack-start fixture with pre-seeded spec at
  * planning/specs/100-health-endpoint.md (2 phases, with VP section).
  *
- * fixtureSetup writes a project-specific verification-tools.md
- * (dev server config, API base URL) that the verify agent reads.
- *
  * Asserts:
  * 1. Standard workflow checks (mode, commit, clean tree, can-exit)
  * 2. Task discipline (pre-created tasks used, all completed, order respected)
- * 3. 2-step pattern expanded: p2.1:impl, p2.1:test per phase
- * 4. Test task instructions contain check-phase
- * 5. P3 verify task references verify-run
+ * 3. Verify subagent was invoked (verify-run ran)
+ * 4. Verification evidence files written
+ * 5. LLM judge passes (agent >= 70, system >= 50)
  */
 
 import type { EvalScenario } from '../harness.js'
 import {
   workflowPresets,
   taskDisciplinePresets,
-  implTaskGenPresets,
   assertNativeTaskHasInstruction,
+  assertVerifySubagentRan,
+  assertVerifyEvidenceExists,
+  assertJudgePasses,
 } from '../assertions.js'
 
 const VERIFICATION_TOOLS_MD = `# Verification Tools
@@ -42,26 +42,33 @@ const VERIFICATION_TOOLS_MD = `# Verification Tools
 - GET /api/health — health check (status, timestamp, uptime_seconds)
 `
 
-export const impl3StepVerifyScenario: EvalScenario = {
-  id: 'impl-3step-verify',
-  name: 'Implementation impl-test + verify-run with VP',
+export const implE2eVerifyScenario: EvalScenario = {
+  id: 'impl-e2e-verify',
+  name: 'E2E implementation + verify with LLM judge',
   templatePath: '.claude/workflows/templates/implementation.md',
   fixture: 'tanstack-start',
   fixtureSetup: [
-    // Write project-specific verification-tools.md (overrides the generic template from batteries)
     `cat > .claude/workflows/verification-tools.md << 'EOF'\n${VERIFICATION_TOOLS_MD}\nEOF`,
   ],
   prompt:
     'Implement the health endpoint feature from the approved spec at planning/specs/100-health-endpoint.md. ' +
     'The issue number is 100. Follow all phases in the spec.',
-  timeoutMs: 20 * 60 * 1000,
+  timeoutMs: 25 * 60 * 1000,
   checkpoints: [
+    // Deterministic: workflow basics
     ...workflowPresets('implementation'),
+    // Deterministic: task discipline
     ...taskDisciplinePresets(),
-    ...implTaskGenPresets(),
-    // Test task should reference check-phase
-    assertNativeTaskHasInstruction(/check-phase/),
-    // P3 verify task should reference verify-run
+    // Deterministic: verify subagent was invoked
     assertNativeTaskHasInstruction(/verify-run/),
+    assertVerifySubagentRan(),
+    // Deterministic: evidence files written
+    assertVerifyEvidenceExists(100),
+    // LLM judge: evaluate complete transcript
+    assertJudgePasses({
+      templatePath: '.claude/workflows/templates/implementation.md',
+      minAgentScore: 70,
+      minSystemScore: 50,
+    }),
   ],
 }

@@ -11,7 +11,7 @@
  * 1. Standard workflow checks (mode, commit, clean tree, can-exit)
  * 2. Task discipline (pre-created tasks used, all completed, order respected)
  * 3. Subphase pattern expanded: p2.1:impl, p2.1:test, p2.1:verify, p2.2:impl, p2.2:test, p2.2:verify
- * 4. Test tasks have verify-phase instruction
+ * 4. Test tasks have check-phase instruction
  * 5. Verify tasks have verification plan content
  */
 

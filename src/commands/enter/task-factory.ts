@@ -26,7 +26,7 @@ export interface TasksFile {
 }
 
 const VP_FALLBACK_TEXT =
-  'No verification plan found in spec. Run process verification only: kata verify-phase {phase_label} --issue={issue}'
+  'No verification plan found in spec. Run process gates only: kata check-phase {phase_label} --issue={issue}'
 
 /**
  * Extract the ## Verification Plan section from spec markdown.
@@ -43,6 +43,47 @@ export function extractVerificationPlan(specContent: string): string | null {
   const end = nextHeading ? start + nextHeading.index : specContent.length
 
   return specContent.slice(match.index, end).trim()
+}
+
+/**
+ * Parsed VP step from a ## Verification Plan section.
+ */
+export interface VpStep {
+  /** Step ID, e.g. "VP1", "VP2" */
+  id: string
+  /** Step title after "### VPn: " */
+  title: string
+  /** Full markdown content of the VP step (including the ### heading) */
+  instruction: string
+}
+
+/**
+ * Parse individual VP steps from a Verification Plan section.
+ * Splits content on ### VPn: headings into separate VpStep objects.
+ *
+ * @param vpContent - Full VP section content (from extractVerificationPlan)
+ * @returns Array of VpStep objects, empty if no ### VPn: headings found
+ */
+export function parseVpSteps(vpContent: string): VpStep[] {
+  const steps: VpStep[] = []
+  const pattern = /^### (VP\d+):\s*(.+)$/gm
+  const positions: Array<{ id: string; title: string; start: number }> = []
+
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(vpContent)) !== null) {
+    positions.push({ id: match[1], title: match[2].trim(), start: match.index })
+  }
+
+  for (let i = 0; i < positions.length; i++) {
+    const start = positions[i].start
+    const end = i + 1 < positions.length ? positions[i + 1].start : vpContent.length
+    steps.push({
+      id: positions[i].id,
+      title: positions[i].title,
+      instruction: vpContent.slice(start, end).trim(),
+    })
+  }
+  return steps
 }
 
 /**

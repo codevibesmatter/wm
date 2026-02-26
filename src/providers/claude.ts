@@ -1,11 +1,26 @@
 /**
  * Claude provider — wraps @anthropic-ai/claude-agent-sdk query().
  *
- * Uses the Agent SDK's streaming query with no tools (text-only judge).
+ * Supports two modes via AgentRunOptions:
+ * - Text-only (default): maxTurns=3, no tools — for judge/review tasks.
+ * - Full-agent: pass allowedTools, maxTurns, settingSources for agentic sessions.
+ *
  * The SDK picks its own default model when none is specified.
  */
 
+import { createRequire } from 'node:module'
 import type { AgentProvider, AgentRunOptions, ModelOption, ThinkingLevel } from './types.js'
+
+/** Resolve the SDK's bundled cli.js so nested query() calls find the executable. */
+function resolveClaudeExecutable(): string | undefined {
+  try {
+    const require = createRequire(import.meta.url)
+    const sdkDir = require.resolve('@anthropic-ai/claude-agent-sdk/package.json').replace('/package.json', '')
+    return `${sdkDir}/cli.js`
+  } catch {
+    return undefined
+  }
+}
 
 const claudeThinking: ThinkingLevel[] = [
   { id: 'disabled', description: 'No extended thinking' },
@@ -55,25 +70,35 @@ export const claudeProvider: AgentProvider = {
     const env = options.env ?? buildCleanEnv()
     const timeoutMs = options.timeoutMs ?? 300_000
 
-    const ac = new AbortController()
+    const ac = options.abortController ?? new AbortController()
     const timer = setTimeout(() => ac.abort(), timeoutMs)
 
     const chunks: string[] = []
 
+    // The SDK checks process.env for nesting detection (e.g. CLAUDECODE=1).
+    // Passing a clean env via options is not enough — must also clear process.env
+    // so the SDK itself doesn't detect a nested session and hang.
+    const savedEnv = clearNestingEnvVars()
+
     try {
-      for await (const message of query({
-        prompt,
-        options: {
-          maxTurns: 3,
-          allowedTools: [] as string[],
-          permissionMode: 'bypassPermissions',
-          allowDangerouslySkipPermissions: true,
-          cwd: options.cwd,
-          env,
-          ...(options.model ? { model: options.model } : {}),
-          abortController: ac,
-        },
-      })) {
+      const queryOpts: Record<string, unknown> = {
+        maxTurns: options.maxTurns ?? 3,
+        allowedTools: options.allowedTools ?? ([] as string[]),
+        permissionMode: options.permissionMode ?? 'bypassPermissions',
+        allowDangerouslySkipPermissions: true,
+        cwd: options.cwd,
+        env,
+        abortController: ac,
+        pathToClaudeCodeExecutable: resolveClaudeExecutable(),
+      }
+
+      if (options.model) queryOpts.model = options.model
+      if (options.settingSources) queryOpts.settingSources = options.settingSources
+      if (options.canUseTool) queryOpts.canUseTool = options.canUseTool
+
+      for await (const message of query({ prompt, options: queryOpts })) {
+        if (options.onMessage) options.onMessage(message)
+
         if (message.type === 'assistant' && message.message?.content) {
           for (const block of message.message.content) {
             if (block.type === 'text' && block.text) {
@@ -83,6 +108,7 @@ export const claudeProvider: AgentProvider = {
         }
       }
     } finally {
+      restoreEnvVars(savedEnv)
       clearTimeout(timer)
     }
 
@@ -90,15 +116,37 @@ export const claudeProvider: AgentProvider = {
   },
 }
 
-/** Build a filtered env stripping Claude-internal vars. */
+/** Returns true if the env var key is a Claude nesting-related variable. */
+function isClaudeNestingVar(key: string): boolean {
+  return key.startsWith('CLAUDECODE') || key.startsWith('CLAUDE_CODE_') || key === 'CLAUDE_PROJECT_DIR'
+}
+
+/** Build a filtered env stripping Claude-internal vars for the spawned process. */
 function buildCleanEnv(): Record<string, string> {
   const clean: Record<string, string> = {}
   for (const [key, value] of Object.entries(process.env)) {
     if (value === undefined) continue
-    if (key.startsWith('CLAUDECODE')) continue
-    if (key === 'CLAUDE_CODE_ENTRYPOINT') continue
-    if (key === 'CLAUDE_PROJECT_DIR') continue
+    if (isClaudeNestingVar(key)) continue
     clean[key] = value
   }
   return clean
+}
+
+/** Temporarily clear nesting env vars from process.env so the SDK doesn't detect a nested session. */
+function clearNestingEnvVars(): Record<string, string> {
+  const saved: Record<string, string> = {}
+  for (const key of Object.keys(process.env)) {
+    if (isClaudeNestingVar(key) && process.env[key] !== undefined) {
+      saved[key] = process.env[key]!
+      delete process.env[key]
+    }
+  }
+  return saved
+}
+
+/** Restore previously cleared env vars. */
+function restoreEnvVars(saved: Record<string, string>): void {
+  for (const [key, value] of Object.entries(saved)) {
+    process.env[key] = value
+  }
 }

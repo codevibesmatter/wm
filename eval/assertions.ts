@@ -7,8 +7,10 @@
  */
 
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { readNativeTaskFiles } from '../src/commands/enter/task-factory.js'
 import type { EvalCheckpoint, EvalContext } from './harness.js'
+import { judgeTranscript } from './judge.js'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -707,18 +709,17 @@ export function assertNativeTaskHasInstruction(pattern: string | RegExp): EvalCh
 }
 
 /**
- * Implementation task generation presets for a 2-phase spec with impl-test-verify pattern.
- * Verifies the 3-step subphase pattern expanded correctly into native tasks.
+ * Implementation task generation presets for a 2-phase spec with impl-test pattern.
+ * Verifies the 2-step subphase pattern expanded correctly into native tasks.
+ * P3 Verify phase (kata verify-run) is a separate orchestration task, not per-subphase.
  */
 export function implTaskGenPresets(): EvalCheckpoint[] {
   return [
     assertNativeTaskHasOriginalId('p2.1:impl'),
     assertNativeTaskHasOriginalId('p2.1:test'),
-    assertNativeTaskHasOriginalId('p2.1:verify'),
     assertNativeTaskHasOriginalId('p2.2:impl'),
     assertNativeTaskHasOriginalId('p2.2:test'),
-    assertNativeTaskHasOriginalId('p2.2:verify'),
-    assertNativeTaskHasInstruction(/verify-phase/),
+    assertNativeTaskHasInstruction(/check-phase/),
   ]
 }
 
@@ -1051,6 +1052,125 @@ export function assertInterviewQuestionCaptured(): EvalCheckpoint {
       }
 
       return pass()
+    },
+  }
+}
+
+// ─── LLM Judge Assertions ───────────────────────────────────────────────────
+
+export interface JudgeAssertionOptions {
+  /** Path to the mode template (relative to projectDir or absolute) */
+  templatePath: string
+  /** Minimum agent score to pass (default: 75) */
+  minAgentScore?: number
+  /** Minimum system score to pass (default: 75) */
+  minSystemScore?: number
+}
+
+/**
+ * Assert that the LLM-as-judge evaluates the complete transcript as passing.
+ * Runs the judge inline as a checkpoint — not optional via --judge flag.
+ * Requires transcriptPath on EvalContext (scenario must have transcript enabled).
+ */
+export function assertJudgePasses(options: JudgeAssertionOptions): EvalCheckpoint {
+  const minAgent = options.minAgentScore ?? 75
+  const minSystem = options.minSystemScore ?? 75
+  return {
+    name: `judge passes (agent>=${minAgent}, system>=${minSystem})`,
+    async assert(ctx: EvalContext) {
+      if (!ctx.transcriptPath) {
+        return fail('No transcriptPath — judge requires a transcript')
+      }
+      const resolvedTemplate = options.templatePath.startsWith('/')
+        ? options.templatePath
+        : join(ctx.projectDir, options.templatePath)
+      try {
+        const result = await judgeTranscript({
+          transcriptPath: ctx.transcriptPath,
+          templatePath: resolvedTemplate,
+        })
+        const errors: string[] = []
+        if (result.agentScore < minAgent) {
+          errors.push(`agent score ${result.agentScore}/100 < ${minAgent}`)
+        }
+        if (result.systemScore < minSystem) {
+          errors.push(`system score ${result.systemScore}/100 < ${minSystem}`)
+        }
+        if (errors.length > 0) {
+          return fail(
+            `Judge: ${errors.join(', ')}. Verdict: ${result.verdict}`,
+          )
+        }
+        return pass()
+      } catch (err) {
+        return fail(`Judge failed: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    },
+  }
+}
+
+// ─── Verify Evidence Assertions ─────────────────────────────────────────────
+
+/**
+ * Assert that verification evidence files exist for a given issue number.
+ * Checks .kata/verification-evidence/ and .claude/verification-evidence/ for
+ * JSON files matching the issue number pattern.
+ */
+export function assertVerifyEvidenceExists(issueNumber: number): EvalCheckpoint {
+  return {
+    name: `verify evidence exists for issue #${issueNumber}`,
+    assert(ctx: EvalContext) {
+      for (const base of ['.kata/verification-evidence', '.claude/verification-evidence']) {
+        try {
+          const files = ctx.listDir(base)
+          const matching = files.filter(
+            (f) => f.endsWith('.json') && f.includes(`-${issueNumber}.json`),
+          )
+          if (matching.length > 0) {
+            return pass()
+          }
+        } catch {
+          // dir doesn't exist, try next
+        }
+      }
+      return fail(
+        `No verification evidence JSON found for issue #${issueNumber} ` +
+        `in .kata/verification-evidence/ or .claude/verification-evidence/`,
+      )
+    },
+  }
+}
+
+/**
+ * Assert that the verify subagent was invoked (transcript contains verify-run output).
+ * Checks for the verify-run stderr markers that indicate the subagent spawned.
+ */
+export function assertVerifySubagentRan(): EvalCheckpoint {
+  return {
+    name: 'verify subagent was invoked',
+    assert(ctx: EvalContext) {
+      if (!ctx.transcriptPath) {
+        return fail('No transcriptPath — cannot check for verify subagent')
+      }
+      let content: string
+      try {
+        content = readFileSync(ctx.transcriptPath, 'utf-8')
+      } catch {
+        return fail(`Cannot read transcript: ${ctx.transcriptPath}`)
+      }
+      // verify-run outputs these markers to stderr which gets captured in tool results
+      if (
+        content.includes('verify-run') ||
+        content.includes('Spawning fresh verification agent') ||
+        content.includes('Verification PASSED') ||
+        content.includes('Verification FAILED')
+      ) {
+        return pass()
+      }
+      return fail(
+        'No verify-run output found in transcript. ' +
+        'The verify subagent may not have been invoked.',
+      )
     },
   }
 }
