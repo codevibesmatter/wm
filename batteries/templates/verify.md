@@ -144,12 +144,90 @@ phases:
 
           Then: Mark this task completed via TaskUpdate
 
+  - id: p2-review
+    name: Fix Review
+    task_config:
+      title: "P2-Review: Fix Review - review emergency fixes for regressions before committing evidence"
+      labels: [review, fix-review]
+      depends_on: [p2]
+    steps:
+      - id: check-fixes-made
+        title: "Check if fixes were made during P2"
+        instruction: |
+          Check whether any fix commits were made during the VP repair loop:
+          ```bash
+          git log --oneline -10
+          ```
+
+          Look for commits matching the pattern `fix: {what was fixed to pass VP}` from P2.
+
+          If NO fix commits were made (all VP steps passed in P1): mark this task AND
+          the review task below as completed immediately — no review needed.
+
+          If fixes WERE made: proceed to the review step below.
+          Then: Mark this task completed via TaskUpdate
+
+      - id: review-fixes
+        title: "Review fix changes via REVIEW Protocol"
+        instruction: |
+          Run the REVIEW Protocol on fix commits made during the VP repair loop.
+
+          **Step 1 — Read kata.yaml to discover external reviewers (do this FIRST):**
+          ```bash
+          cat .kata/kata.yaml 2>/dev/null || cat .claude/workflows/kata.yaml
+          ```
+          Note: `reviews.code_review` (true/false) and `reviews.code_reviewers` list.
+
+          **Step 2 — Spawn review-agent with verify-fix context:**
+          ```
+          Task(subagent_type="review-agent", prompt="
+            Review the fix changes made during VP failure resolution in verify mode.
+
+            First, identify fix commits from the repair loop:
+              git log --oneline -20
+              git show {fix-commit-sha} --stat
+              git diff {first-fix-sha}^..HEAD  (full diff of all fixes)
+
+            This review has a specific focus: HASTY-FIX RISK.
+            Fixes made under pressure during verification often introduce regressions.
+            Evaluate each changed file/function against these criteria:
+
+            1. MINIMALITY — Is the fix narrowly targeted at the failing VP step?
+               Red flag: changes to unrelated files, opportunistic refactoring, scope creep.
+            2. ROOT CAUSE — Does the fix address the actual root cause, not just the symptom?
+               Red flag: workarounds, special-casing the test scenario, suppressing errors.
+            3. REGRESSION RISK — Could this fix break other VP steps or existing behavior?
+               Red flag: changes to shared utilities, altered function signatures, changed defaults.
+            4. CORRECTNESS — Is the logic sound? Edge cases handled?
+               Red flag: off-by-one, null dereference, wrong condition direction.
+            5. SIDE EFFECTS — Any unintended state changes, performance impact, or security concerns?
+
+            Return verdict: APPROVE or REQUEST CHANGES.
+            APPROVE: brief confirmation that fixes are clean and targeted.
+            REQUEST CHANGES: specific issues at file:line with explanation of risk.
+          ")
+          ```
+
+          **Step 3 — Run each external provider (if configured):**
+          If `reviews.code_review` is `true` and `reviews.code_reviewers` is non-empty,
+          run each provider in sequence:
+          ```bash
+          kata review --prompt=code-review --provider={name}
+          ```
+          If no reviewers are configured, skip this step.
+
+          **If REQUEST CHANGES:** Fix the identified issues, commit the corrections, then
+          re-run this review step (restart from Step 1).
+
+          **If APPROVE from all reviewers:** Proceed to P3 Evidence.
+          Then: Mark this task completed via TaskUpdate
+
   - id: p3
     name: Evidence
     task_config:
       title: "P3: Evidence - write VP evidence, commit, report results"
       labels: [orchestration, evidence]
-      depends_on: [p2]
+      depends_on: [p2-review]
     steps:
       - id: write-evidence
         title: "Write VP evidence file"
@@ -284,6 +362,10 @@ P2: Fix Loop
     ├── Check for failures from P1
     └── For each failure: diagnose → fix → re-verify (max 3 cycles)
 
+P2-Review: Fix Review  (skip if no fixes were made)
+    ├── Check if fix commits exist
+    └── REVIEW Protocol: review-agent + external providers
+
 P3: Evidence
     ├── Write VP evidence JSON
     ├── Commit evidence + push
@@ -318,6 +400,31 @@ If any VP step fails in P1:
 
 **Critical:** Fix the implementation, never the VP steps. VP steps encode what the feature
 is supposed to do — they are correct by definition in this mode.
+
+## REVIEW Protocol (P2-Review)
+
+After fixing VP failures, a focused code review guards against regressions introduced under
+pressure. This phase runs **only when fix commits were made** — it is skipped when all VP
+steps pass in P1.
+
+**Why this matters:** Emergency fixes during verification are high-risk. The pressure to get
+VP steps passing can lead to symptom-masking, scope creep, or fragile workarounds. The review
+specifically targets hasty-fix failure modes rather than general code style.
+
+**Protocol:**
+
+1. **Read kata.yaml** — check `reviews.code_review` and `reviews.code_reviewers`
+2. **Spawn review-agent** — subagent reviews fix diff with hasty-fix criteria:
+   - Minimality (no scope creep)
+   - Root cause (not symptom masking)
+   - Regression risk (no collateral damage to other VP steps)
+   - Correctness (logic sound, edge cases handled)
+   - Side effects (no unintended state changes)
+3. **External providers** — run `kata review --prompt=code-review --provider=<name>` for each
+   configured reviewer (only if `code_review: true` and `code_reviewers` non-empty)
+
+**If REQUEST CHANGES:** fix the issues, commit, and re-run the review.
+**If APPROVE:** proceed to P3 Evidence.
 
 ## Stop Conditions
 
