@@ -16,7 +16,7 @@ import {
   getNativeTasksDir,
   getPendingNativeTaskTitles,
 } from './enter/task-factory.js'
-import { loadWmConfig } from '../config/wm-config.js'
+import { loadKataConfig } from '../config/kata-config.js'
 
 /**
  * Parse command line arguments for can-exit command
@@ -311,7 +311,7 @@ function checkVpEvidence(issueNumber: number, nonCodePaths: string[]): { passed:
  */
 function checkFeatureTestsAdded(): { passed: boolean; newTestCount?: number } {
   try {
-    const cfg = loadWmConfig()
+    const cfg = loadKataConfig()
     const diffBase = cfg.project?.diff_base ?? 'origin/main'
     const testFilePattern = cfg.project?.test_file_pattern ?? '*.test.ts,*.spec.ts'
     const patterns = testFilePattern.split(',').map((p) => p.trim().replace(/^\*/, ''))
@@ -389,8 +389,8 @@ function validateCanExit(
   }
 
   // Load config once for staleness checks
-  const wmConfig = loadWmConfig()
-  const nonCodePaths = wmConfig.non_code_paths ?? ['.claude', '.kata', 'planning']
+  const wmConfig = loadKataConfig()
+  const nonCodePaths = wmConfig.non_code_paths
 
   // ── verification ── (only when a verify mechanism is configured)
   if (checks.has('verification')) {
@@ -517,9 +517,8 @@ export async function canExit(args: string[]): Promise<void> {
   const issueNumber = state.issueNumber ?? undefined
 
   // Load mode config to get stop_conditions
-  const { loadModesConfig } = await import('../config/cache.js')
-  const modesConfig = await loadModesConfig()
-  const modeConfig = modesConfig.modes[sessionType]
+  const kataConfig = loadKataConfig()
+  const modeConfig = kataConfig.modes[sessionType]
   const stopConditions = [...(modeConfig?.stop_conditions ?? [])]
 
   // Merge template global_conditions (e.g., changes_committed, changes_pushed)

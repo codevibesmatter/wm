@@ -172,10 +172,10 @@ export async function handleUserPrompt(input: Record<string, unknown>): Promise<
   if (session) {
     const activeMode = session.state.currentMode || session.state.sessionType || 'default'
     if (activeMode !== 'default') {
-      const { loadModesConfig } = await import('../config/cache.js')
-      const modesConfig = await loadModesConfig()
-      const availableModes = Object.keys(modesConfig.modes)
-        .filter((id) => !modesConfig.modes[id].deprecated)
+      const { loadKataConfig } = await import('../config/kata-config.js')
+      const kataConfig = loadKataConfig()
+      const availableModes = Object.keys(kataConfig.modes)
+        .filter((id) => !kataConfig.modes[id].deprecated)
         .join(', ')
       if (sessionId) logHook(sessionId, { hook: 'user-prompt', decision: 'context', active_mode: activeMode })
       outputJson({
@@ -462,9 +462,9 @@ export async function handleStopConditions(input: Record<string, unknown>): Prom
   const currentMode = state.currentMode || state.sessionType || 'default'
 
   // Load mode config to check stop_conditions
-  const { loadModesConfig } = await import('../config/cache.js')
-  const modesConfig = await loadModesConfig()
-  const modeConfig = modesConfig.modes[currentMode]
+  const { loadKataConfig } = await import('../config/kata-config.js')
+  const kataConfig = loadKataConfig()
+  const modeConfig = kataConfig.modes[currentMode]
   const stopConditions = modeConfig?.stop_conditions ?? []
 
   // No stop conditions for this mode = allow exit

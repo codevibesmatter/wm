@@ -17,7 +17,7 @@ import { execSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { AgentStepConfig } from '../validation/schemas.js'
-import { loadWmConfig } from '../config/wm-config.js'
+import { loadKataConfig } from '../config/kata-config.js'
 import { getProvider } from './index.js'
 import { loadPrompt } from './prompt.js'
 
@@ -63,7 +63,7 @@ function resolveProvider(providerRef: string): string {
   // Support ${providers.default} and ${providers.code_reviewer} syntax
   const match = providerRef.match(/^\$\{providers\.(\w+)\}$/)
   if (match) {
-    const config = loadWmConfig()
+    const config = loadKataConfig()
     const key = match[1]
     if (key === 'default') return config.providers?.default ?? 'claude'
     if (key === 'code_reviewer') return config.reviews?.code_reviewer ?? 'claude'
@@ -79,7 +79,7 @@ function assembleContext(sources: string[], ctx: StepContext): string {
 
   for (const source of sources) {
     if (source === 'git_diff') {
-      const config = loadWmConfig()
+      const config = loadKataConfig()
       const diffBase = config.project?.diff_base ?? 'origin/main'
       try {
         const diff = execSync(`git diff ${diffBase}...HEAD`, {
@@ -134,7 +134,7 @@ function assembleContext(sources: string[], ctx: StepContext): string {
 }
 
 function findSpecFile(cwd: string): string | null {
-  const config = loadWmConfig()
+  const config = loadKataConfig()
   const specDir = join(cwd, config.spec_path ?? 'planning/specs')
   if (!existsSync(specDir)) return null
   try {

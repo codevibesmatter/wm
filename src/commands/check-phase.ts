@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join } from 'node:path'
 import { getCurrentSessionId, findProjectDir, getStateFilePath, getVerificationDir } from '../session/lookup.js'
 import { readState } from '../state/reader.js'
-import { loadWmConfig } from '../config/wm-config.js'
+import { loadKataConfig } from '../config/kata-config.js'
 
 interface StepResult {
   name: string
@@ -401,7 +401,7 @@ export async function checkPhase(args: string[]): Promise<void> {
     process.exit(1)
   }
 
-  const cfg = loadWmConfig()
+  const cfg = loadKataConfig()
   const project = cfg.project ?? {}
   const diffBase = project.diff_base ?? 'origin/main'
   const testFilePattern = project.test_file_pattern ?? '*.test.ts,*.spec.ts'

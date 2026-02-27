@@ -1,6 +1,6 @@
 // Stop hook guidance messages
 // Centralized here so stop hook doesn't hardcode them
-import { loadWmConfig } from '../config/wm-config.js'
+import { loadKataConfig } from '../config/kata-config.js'
 import { getKataDir, findProjectDir, getSessionsDir } from '../session/lookup.js'
 
 /**
@@ -64,8 +64,8 @@ export function getArtifactMessage(
 
   switch (artifactType) {
     case 'research_doc': {
-      const researchCfg = loadWmConfig()
-      const researchPath = researchCfg.research_path ?? 'planning/research'
+      const researchCfg = loadKataConfig()
+      const researchPath = researchCfg.research_path
       return {
         type: 'research_doc',
         title: 'ARTIFACT MISSING: Research document required',
@@ -78,7 +78,7 @@ Template: planning/templates/research-findings.template.md`,
     }
 
     case 'implementation_commits': {
-      const testCmd = loadWmConfig().project?.test_command ?? 'pnpm test'
+      const testCmd = loadKataConfig().project?.test_command ?? 'pnpm test'
       return {
         type: 'implementation_commits',
         title: 'ANTI-CHEAT VIOLATION: No commits found',
@@ -114,7 +114,7 @@ pnpm install
       }
 
     case 'verification_not_run': {
-      const wmCfg = loadWmConfig()
+      const wmCfg = loadKataConfig()
       const reviewer = wmCfg.reviews?.code_reviewer
       // Use configured verify_command; fall back to project test command
       const verifyCmd =
@@ -146,7 +146,7 @@ reviews:
     }
 
     case 'verification_failed': {
-      const failedCfg = loadWmConfig()
+      const failedCfg = loadKataConfig()
       const failedReviewer = failedCfg.reviews?.code_reviewer
       const failedVerifyCmd =
         failedCfg.verify_command != null
@@ -173,7 +173,7 @@ ${failedVerifyCmd}
     }
 
     case 'verification_stale': {
-      const staleCfg = loadWmConfig()
+      const staleCfg = loadKataConfig()
       const staleReviewer = staleCfg.reviews?.code_reviewer
       const staleVerifyCmd =
         staleCfg.verify_command != null

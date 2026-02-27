@@ -4,7 +4,7 @@ import { readdirSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { findProjectDir } from '../../session/lookup.js'
 import { parseYamlFrontmatter, type SpecYaml } from '../../yaml/index.js'
-import { loadWmConfig } from '../../config/wm-config.js'
+import { loadKataConfig } from '../../config/kata-config.js'
 
 /**
  * Issue types that require spec files for implementation mode
@@ -73,7 +73,7 @@ export function getSpecFileSize(specPath: string): number {
  */
 export function findSpecFile(issueNum: number): string | null {
   const projectRoot = findProjectDir()
-  const specsDir = resolve(projectRoot, loadWmConfig().spec_path ?? 'planning/specs')
+  const specsDir = resolve(projectRoot, loadKataConfig().spec_path)
 
   try {
     const files = readdirSync(specsDir)

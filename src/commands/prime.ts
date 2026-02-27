@@ -2,8 +2,7 @@
 import { getCurrentSessionId, getStateFilePath, resolveTemplatePath } from '../session/lookup.js'
 import { readState, stateExists } from '../state/reader.js'
 import { readFullTemplateContent } from '../yaml/index.js'
-import { loadModesConfig } from '../config/cache.js'
-import { loadWmConfig } from '../config/wm-config.js'
+import { loadKataConfig } from '../config/kata-config.js'
 
 /**
  * Parse command line arguments for prime command
@@ -30,18 +29,18 @@ function parseArgs(args: string[]): {
  * Reads available modes from modes.yaml dynamically
  */
 async function buildModeSelectionHelp(): Promise<string> {
-  // Load modes from modes.yaml (with project-level override if present)
-  const config = await loadModesConfig()
+  // Load unified kata config
+  const config = loadKataConfig()
 
-  // Get all mode names (sorted, non-deprecated, non-system)
+  // Get all mode names (sorted, non-deprecated)
   const allModes = Object.keys(config.modes)
-    .filter((m) => !config.modes[m].deprecated && config.modes[m].category !== 'system')
+    .filter((m) => !config.modes[m].deprecated)
     .sort()
     .join(', ')
 
-  // Build table with issue_handling derived from modes.yaml
+  // Build table with issue_handling derived from kata.yaml
   const modeTable = Object.entries(config.modes)
-    .filter(([_, cfg]) => !cfg.deprecated && cfg.category !== 'system')
+    .filter(([_, cfg]) => !cfg.deprecated)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, cfg]) => {
       const issueRequired = cfg.issue_handling === 'required' ? '**Yes**' : 'No'
@@ -149,35 +148,8 @@ async function buildContextBlock(sessionId: string): Promise<string> {
             }
           }
 
-          // Task system rules from global_behavior in modes.yaml
-          try {
-            const modesConfig = await loadModesConfig()
-            if (modesConfig.global_behavior?.task_system?.length) {
-              contextParts.push('')
-              contextParts.push('---')
-              contextParts.push('# Task System Rules')
-              for (const rule of modesConfig.global_behavior.task_system) {
-                contextParts.push(`- ${rule}`)
-              }
-            }
-          } catch {
-            // Config not available, skip
-          }
-
-          // Prime extensions from wm.yaml
-          try {
-            const wmConfig = loadWmConfig()
-            if (wmConfig.prime_extensions?.length) {
-              contextParts.push('')
-              contextParts.push('---')
-              contextParts.push('# Project Extensions')
-              for (const ext of wmConfig.prime_extensions) {
-                contextParts.push(ext)
-              }
-            }
-          } catch {
-            // Config not available, skip
-          }
+          // task_system and prime_extensions removed — behavioral guidance
+          // now lives in template bodies (see spec #30, phase P2.5)
 
           return contextParts.join('\n')
         }
