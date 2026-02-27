@@ -36,13 +36,19 @@ phases:
       - id: context-search
         title: "Quick context search (3-5 min max)"
         instruction: |
-          Find relevant context fast. Search for:
-          - Files related to the task (Glob for filenames, Grep for code patterns)
-          - Existing patterns to follow (naming, structure, conventions)
-          - Rules that may apply: check `.claude/rules/` if it exists
+          SPAWN a fast Explore agent for context gathering:
 
-          Document 3-5 findings with file:line references.
-          Keep it brief — just enough context to plan the change.
+          Task(subagent_type="Explore", prompt="
+            Find code patterns and context for: {task description}.
+            Search with Glob and Grep for relevant files.
+            Check .claude/rules/ or .kata/rules/ for applicable constraints.
+            Read the most relevant files IN FULL.
+            Document: file paths, function names, patterns to follow.
+            Keep output to 3-5 bullet points with file:line references.
+          ", model="haiku")
+
+          Wait for agent: TaskOutput(task_id=..., block=true)
+          Record key findings — just enough context to plan the change.
 
           Then: Mark this task completed via TaskUpdate
 

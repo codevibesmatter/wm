@@ -14,6 +14,36 @@ subphase_patterns:
         todo_template: "Implement {task_summary}"
         active_form: "Implementing {phase_name}"
         labels: [impl]
+        instruction: |
+          ⛔ DO NOT implement this phase yourself. SPAWN an impl-agent.
+
+          Task(subagent_type="general-purpose", prompt="
+            ROLE: Implementation Agent
+            SPEC PHASE: {phase_name}
+            TASK: {task_summary}
+
+            Read the spec section for this phase IN FULL.
+            Implement exactly what the spec describes:
+            - Follow existing code patterns (search for similar implementations first)
+            - Write tests alongside code if test infrastructure exists
+            - Run the project's build/typecheck command after changes
+
+            RETURN:
+            - Files changed (with paths)
+            - Test files written (if any)
+            - Build/typecheck result
+            - Any blockers or open questions
+
+            Do NOT complete tasks — return results to orchestrator.
+          ")
+
+          After the agent returns, verify its work:
+          ```bash
+          git diff --stat   # Review what changed
+          git status        # Confirm changes exist
+          ```
+
+          Then: Mark this task completed via TaskUpdate
       - id_suffix: test
         title_template: "TEST - {phase_name}"
         todo_template: "Test {phase_name} implementation"
@@ -48,6 +78,36 @@ subphase_patterns:
         todo_template: "Implement {task_summary}"
         active_form: "Implementing {phase_name}"
         labels: [impl]
+        instruction: |
+          ⛔ DO NOT implement this phase yourself. SPAWN an impl-agent.
+
+          Task(subagent_type="general-purpose", prompt="
+            ROLE: Implementation Agent
+            SPEC PHASE: {phase_name}
+            TASK: {task_summary}
+
+            Read the spec section for this phase IN FULL.
+            Implement exactly what the spec describes:
+            - Follow existing code patterns (search for similar implementations first)
+            - Write tests alongside code if test infrastructure exists
+            - Run the project's build/typecheck command after changes
+
+            RETURN:
+            - Files changed (with paths)
+            - Test files written (if any)
+            - Build/typecheck result
+            - Any blockers or open questions
+
+            Do NOT complete tasks — return results to orchestrator.
+          ")
+
+          After the agent returns, verify its work:
+          ```bash
+          git diff --stat   # Review what changed
+          git status        # Confirm changes exist
+          ```
+
+          Then: Mark this task completed via TaskUpdate
       - id_suffix: test
         title_template: "TEST - {phase_name}"
         todo_template: "Test {phase_name} implementation"
@@ -64,6 +124,36 @@ subphase_patterns:
         todo_template: "Implement {task_summary}"
         active_form: "Implementing {phase_name}"
         labels: [impl]
+        instruction: |
+          ⛔ DO NOT implement this phase yourself. SPAWN an impl-agent.
+
+          Task(subagent_type="general-purpose", prompt="
+            ROLE: Implementation Agent
+            SPEC PHASE: {phase_name}
+            TASK: {task_summary}
+
+            Read the spec section for this phase IN FULL.
+            Implement exactly what the spec describes:
+            - Follow existing code patterns (search for similar implementations first)
+            - Write tests alongside code if test infrastructure exists
+            - Run the project's build/typecheck command after changes
+
+            RETURN:
+            - Files changed (with paths)
+            - Test files written (if any)
+            - Build/typecheck result
+            - Any blockers or open questions
+
+            Do NOT complete tasks — return results to orchestrator.
+          ")
+
+          After the agent returns, verify its work:
+          ```bash
+          git diff --stat   # Review what changed
+          git status        # Confirm changes exist
+          ```
+
+          Then: Mark this task completed via TaskUpdate
       - id_suffix: test
         title_template: "TEST - {phase_name}"
         todo_template: "Test {phase_name} implementation"
@@ -91,6 +181,36 @@ subphase_patterns:
         todo_template: "Implement {task_summary}"
         active_form: "Implementing {phase_name}"
         labels: [impl]
+        instruction: |
+          ⛔ DO NOT implement this phase yourself. SPAWN an impl-agent.
+
+          Task(subagent_type="general-purpose", prompt="
+            ROLE: Implementation Agent
+            SPEC PHASE: {phase_name}
+            TASK: {task_summary}
+
+            Read the spec section for this phase IN FULL.
+            Implement exactly what the spec describes:
+            - Follow existing code patterns (search for similar implementations first)
+            - Write tests alongside code if test infrastructure exists
+            - Run the project's build/typecheck command after changes
+
+            RETURN:
+            - Files changed (with paths)
+            - Test files written (if any)
+            - Build/typecheck result
+            - Any blockers or open questions
+
+            Do NOT complete tasks — return results to orchestrator.
+          ")
+
+          After the agent returns, verify its work:
+          ```bash
+          git diff --stat   # Review what changed
+          git status        # Confirm changes exist
+          ```
+
+          Then: Mark this task completed via TaskUpdate
       - id_suffix: check
         title_template: "CHECK - {phase_name}"
         todo_template: "Check {phase_name} implementation"

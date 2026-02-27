@@ -45,8 +45,9 @@ phases:
       - id: codebase-research
         title: "Research existing patterns"
         instruction: |
-          Search the codebase for relevant context:
+          SPAWN 2 parallel Explore agents for fast codebase research:
 
+          **Agent 1: Code patterns and similar implementations**
           Task(subagent_type="Explore", prompt="
             Find code patterns related to {feature_topic}.
             Search: Glob, Grep, Read relevant files.
@@ -54,12 +55,17 @@ phases:
             Be thorough — read files IN FULL, not just search results.
           ", run_in_background=true)
 
-          Also read any related spec files:
-          ```bash
-          ls planning/specs/ | grep -i "{keyword}"
-          ```
+          **Agent 2: Rules, specs, and constraints**
+          Task(subagent_type="Explore", prompt="
+            Search for existing context on {feature_topic}:
+            - .claude/rules/ or .kata/rules/ for applicable constraints
+            - planning/specs/ for related or past specs
+            - docs/ for relevant documentation
+            List: constraints, conventions, prior decisions.
+            Read relevant files IN FULL.
+          ", run_in_background=true)
 
-          Wait for agent: TaskOutput(task_id=..., block=true)
+          Wait for both agents: TaskOutput(task_id=..., block=true)
           Compile findings into 3-5 bullet points.
           Then: Mark this task completed via TaskUpdate
 
