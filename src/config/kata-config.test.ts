@@ -168,6 +168,37 @@ describe('loadKataConfig', () => {
     expect(result.project?.name).toBe('old-layout')
   })
 
+  it('provides default task_rules and empty global_rules', () => {
+    const config = { modes: {} }
+    writeFileSync(join(tmpDir, '.kata', 'kata.yaml'), jsYaml.dump(config))
+
+    const result = loadKataConfig()
+    expect(result.task_rules.length).toBeGreaterThan(0)
+    expect(result.task_rules[0]).toContain('TaskCreate')
+    expect(result.global_rules).toEqual([])
+  })
+
+  it('allows overriding task_rules and global_rules', () => {
+    const config = {
+      global_rules: ['Always use TypeScript'],
+      task_rules: ['Custom task rule'],
+      modes: {},
+    }
+    writeFileSync(join(tmpDir, '.kata', 'kata.yaml'), jsYaml.dump(config))
+
+    const result = loadKataConfig()
+    expect(result.global_rules).toEqual(['Always use TypeScript'])
+    expect(result.task_rules).toEqual(['Custom task rule'])
+  })
+
+  it('allows disabling task_rules with empty array', () => {
+    const config = { task_rules: [], modes: {} }
+    writeFileSync(join(tmpDir, '.kata', 'kata.yaml'), jsYaml.dump(config))
+
+    const result = loadKataConfig()
+    expect(result.task_rules).toEqual([])
+  })
+
   it('handles reviews and providers sections', () => {
     const config = {
       reviews: {
