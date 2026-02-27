@@ -80,24 +80,6 @@ function checkGlobalConditions(checks: Set<string>): { passed: boolean; reasons:
 }
 
 /**
- * Get the latest git commit timestamp (ISO 8601)
- * Returns null if not in a git repo or no commits
- */
-function getLatestCommitTimestamp(): Date | null {
-  try {
-    const ts = execSync('git log -1 --format=%cI 2>/dev/null || true', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    }).trim()
-    if (!ts) return null
-    const d = new Date(ts)
-    return isNaN(d.getTime()) ? null : d
-  } catch {
-    return null
-  }
-}
-
-/**
  * Get the latest git commit timestamp that touched code files (excluding non-code paths).
  * Returns null if no code commits exist (all commits are non-code only → evidence is fresh).
  */
@@ -444,6 +426,8 @@ function validateCanExit(
   }
 
   // ── verification_plan_executed ──
+  // Guard: requires issueNumber because VP evidence files are named vp-*-{issueNumber}.json.
+  // Without an issue, there is no evidence to check — the condition vacuously passes.
   if (checks.has('verification_plan_executed') && issueNumber) {
     const vpCheck = checkVpEvidence(issueNumber, nonCodePaths)
     if (!vpCheck.passed && vpCheck.reason) {

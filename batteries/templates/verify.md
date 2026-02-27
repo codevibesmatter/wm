@@ -121,12 +121,12 @@ phases:
       - id: write-evidence
         title: "Write VP evidence file"
         instruction: |
-          Write VP evidence to `.kata/verification-evidence/vp-{identifier}.json`
-          (or `.claude/verification-evidence/` for old layout):
+          Write VP evidence to `.kata/verification-evidence/` (or `.claude/verification-evidence/` for old layout).
 
-          For issue-based: `vp-{issueNumber}.json`
-          For plan-file: `vp-task-{plan-name}.json`
-          For infer mode: `vp-infer-{HEAD-short-hash}.json`
+          Filename convention (the `can-exit` check requires `vp-*-{issueNumber}.json`):
+          - Issue-based: `vp-p{N}-{issueNumber}.json` (e.g. `vp-p1-42.json`)
+          - Plan-file: `vp-task-{plan-name}.json`
+          - Infer mode: `vp-infer-{HEAD-short-hash}.json`
 
           ```json
           {
