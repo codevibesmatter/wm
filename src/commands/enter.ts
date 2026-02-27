@@ -646,7 +646,20 @@ export async function enter(args: string[]): Promise<void> {
         : []
       // Read spec file content for VP extraction (used by {verification_plan} placeholder)
       const specContent = specPath ? readFileSync(specPath, 'utf-8') : undefined
-      const specTasks = buildSpecTasks(specPhases, issueNum, resolvedSubphasePattern, containerPhaseNum, specContent)
+
+      // Build reviewers string for {reviewers} placeholder in review step titles
+      const reviews = config.reviews
+      const externalProviders =
+        reviews?.code_review !== false
+          ? (reviews?.code_reviewers ?? (reviews?.code_reviewer ? [reviews.code_reviewer] : []))
+          : []
+      const reviewerParts = [
+        'review-agent',
+        ...externalProviders.filter(Boolean).map((p) => `kata review --provider=${p}`),
+      ]
+      const reviewers = reviewerParts.join(', ')
+
+      const specTasks = buildSpecTasks(specPhases, issueNum, resolvedSubphasePattern, containerPhaseNum, specContent, reviewers)
 
       // Wire cross-phase dependencies:
       // - First P2.X:impl depends on last task of P1 (Claim)

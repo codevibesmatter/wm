@@ -147,7 +147,7 @@ subphase_patterns:
           Then run the process gate:
           kata check-phase {phase_label} --issue={issue}
       - id_suffix: review
-        title_template: "REVIEW - {phase_name}"
+        title_template: "REVIEW - {reviewers}"
         todo_template: "Review {phase_name} changes"
         active_form: "Reviewing {phase_name}"
         labels: [review]

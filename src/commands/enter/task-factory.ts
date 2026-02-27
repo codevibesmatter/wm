@@ -101,6 +101,7 @@ export function buildSpecTasks(
   subphasePattern: SubphasePattern[],
   containerPhaseNum: number = 2,
   specContent?: string,
+  reviewers?: string,
 ): Task[] {
   const tasks: Task[] = []
 
@@ -129,6 +130,7 @@ export function buildSpecTasks(
           taskSummary,
           phaseName,
           phaseLabel,
+          reviewers,
         })
         const fullTitle = `GH#${issueNum}: ${phaseLabel}: ${titleContent}`
         const taskId = `p${containerPhaseNum}.${phaseNum}:${patternItem.id_suffix}`
@@ -153,6 +155,7 @@ export function buildSpecTasks(
             taskSummary,
             phaseName,
             phaseLabel,
+            reviewers,
           })
             .replace(/{issue}/g, String(issueNum))
             .replace(/{verification_plan}/g, vpContent ?? VP_FALLBACK_TEXT)

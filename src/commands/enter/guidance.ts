@@ -31,12 +31,13 @@ export interface WorkflowGuidance {
  */
 export function applyPlaceholders(
   template: string,
-  vars: { taskSummary: string; phaseName: string; phaseLabel: string },
+  vars: { taskSummary: string; phaseName: string; phaseLabel: string; reviewers?: string },
 ): string {
   return template
     .replace(/{task_summary}/g, vars.taskSummary)
     .replace(/{phase_name}/g, vars.phaseName)
     .replace(/{phase_label}/g, vars.phaseLabel)
+    .replace(/{reviewers}/g, vars.reviewers ?? 'review-agent')
 }
 
 /**
