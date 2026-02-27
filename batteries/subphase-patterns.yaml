@@ -171,10 +171,6 @@ subphase_patterns:
           or no reviewers are configured.
 
           Print each result as it completes. All reviews must finish before marking complete.
-        agent:
-          provider: claude
-          prompt: code-review
-          gate: false
 
   # Legacy pattern — kept for backwards compatibility with existing project templates
   impl-verify:
