@@ -38,6 +38,9 @@ export interface WmConfig {
     judge_provider?: string       // provider for eval --judge (default: same as default)
     judge_model?: string | null   // override model for judging
   }
+  // Non-code paths: git pathspec dirs excluded from staleness checks
+  // (commits touching only these paths won't invalidate verification evidence)
+  non_code_paths?: string[]
   // Extensions
   prime_extensions?: string[]
   // Version tracking
@@ -56,6 +59,7 @@ export function getDefaultConfig(): Required<
     research_path: 'planning/research',
     session_retention_days: 7,
     hooks_dir: '.claude/hooks',
+    non_code_paths: ['.claude', '.kata', 'planning'],
     reviews: {
       spec_review: false,
       // code_review: not set - absence means "enabled when reviewer is configured"
@@ -101,6 +105,7 @@ function mergeWmConfig(base: WmConfig, overlay: WmConfig, skipProject = false): 
   if (overlay.verify_command !== undefined) merged.verify_command = overlay.verify_command
 
   // Arrays: replace entirely
+  if (overlay.non_code_paths !== undefined) merged.non_code_paths = overlay.non_code_paths
   if (overlay.prime_extensions !== undefined) merged.prime_extensions = overlay.prime_extensions
 
   // Nested objects: shallow merge

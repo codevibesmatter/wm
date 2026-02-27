@@ -98,11 +98,30 @@ function getLatestCommitTimestamp(): Date | null {
 }
 
 /**
+ * Get the latest git commit timestamp that touched code files (excluding non-code paths).
+ * Returns null if no code commits exist (all commits are non-code only → evidence is fresh).
+ */
+function getLatestCodeCommitTimestamp(nonCodePaths: string[]): Date | null {
+  try {
+    const excludes = nonCodePaths.map(p => `':!${p}'`).join(' ')
+    const ts = execSync(`git log -1 --format=%cI -- . ${excludes} 2>/dev/null || true`, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim()
+    if (!ts) return null
+    const d = new Date(ts)
+    return isNaN(d.getTime()) ? null : d
+  } catch {
+    return null
+  }
+}
+
+/**
  * Check verification evidence for implementation mode
  * Supports any reviewer (codex, gemini) or custom verify_command output.
  * Returns artifact type for guidance lookup instead of hardcoded message.
  */
-function checkVerificationEvidence(issueNumber: number | undefined): {
+function checkVerificationEvidence(issueNumber: number | undefined, nonCodePaths: string[]): {
   passed: boolean
   artifactType?: 'verification_not_run' | 'verification_failed' | 'verification_stale'
 } {
@@ -132,11 +151,12 @@ function checkVerificationEvidence(issueNumber: number | undefined): {
       return { passed: false, artifactType: 'verification_failed' }
     }
 
-    // Timestamp check: evidence must be newer than the latest commit
-    const latestCommit = getLatestCommitTimestamp()
-    if (latestCommit) {
+    // Timestamp check: evidence must be newer than the latest code commit
+    // (non-code commits like evidence/docs don't invalidate verification)
+    const latestCodeCommit = getLatestCodeCommitTimestamp(nonCodePaths)
+    if (latestCodeCommit) {
       const evidenceDate = new Date(parsed.verifiedAt as string)
-      if (!isNaN(evidenceDate.getTime()) && evidenceDate < latestCommit) {
+      if (!isNaN(evidenceDate.getTime()) && evidenceDate < latestCodeCommit) {
         return { passed: false, artifactType: 'verification_stale' }
       }
     }
@@ -155,7 +175,7 @@ function checkVerificationEvidence(issueNumber: number | undefined): {
  * Check that at least one phase evidence file exists with fresh timestamp and overallPassed.
  * Reads .claude/verification-evidence/phase-*-{issueNumber}.json files.
  */
-function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string } {
+function checkTestsPass(issueNumber: number, nonCodePaths: string[]): { passed: boolean; reason?: string } {
   try {
     const projectRoot = findProjectDir()
     const evidenceDir = getVerificationDir(projectRoot)
@@ -177,7 +197,7 @@ function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string
       }
     }
 
-    const latestCommit = getLatestCommitTimestamp()
+    const latestCodeCommit = getLatestCodeCommitTimestamp(nonCodePaths)
 
     for (const file of phaseFiles) {
       try {
@@ -191,9 +211,9 @@ function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string
           }
         }
 
-        if (latestCommit && content.timestamp) {
+        if (latestCodeCommit && content.timestamp) {
           const evidenceDate = new Date(content.timestamp as string)
-          if (!isNaN(evidenceDate.getTime()) && evidenceDate < latestCommit) {
+          if (!isNaN(evidenceDate.getTime()) && evidenceDate < latestCodeCommit) {
             return {
               passed: false,
               reason: `Phase ${phaseId} check-phase evidence is stale (predates latest commit). Re-run: kata check-phase ${phaseId} --issue=${issueNumber}`,
@@ -223,7 +243,7 @@ function checkTestsPass(issueNumber: number): { passed: boolean; reason?: string
  * Reads .kata/verification-evidence/vp-*-{issueNumber}.json files.
  * Each file must have allStepsPassed: true and a timestamp newer than the latest commit.
  */
-function checkVpEvidence(issueNumber: number): { passed: boolean; reason?: string } {
+function checkVpEvidence(issueNumber: number, nonCodePaths: string[]): { passed: boolean; reason?: string } {
   try {
     const projectRoot = findProjectDir()
     const evidenceDir = getVerificationDir(projectRoot)
@@ -245,7 +265,7 @@ function checkVpEvidence(issueNumber: number): { passed: boolean; reason?: strin
       }
     }
 
-    const latestCommit = getLatestCommitTimestamp()
+    const latestCodeCommit = getLatestCodeCommitTimestamp(nonCodePaths)
 
     for (const file of vpFiles) {
       try {
@@ -259,9 +279,9 @@ function checkVpEvidence(issueNumber: number): { passed: boolean; reason?: strin
           }
         }
 
-        if (latestCommit && content.timestamp) {
+        if (latestCodeCommit && content.timestamp) {
           const evidenceDate = new Date(content.timestamp as string)
-          if (!isNaN(evidenceDate.getTime()) && evidenceDate < latestCommit) {
+          if (!isNaN(evidenceDate.getTime()) && evidenceDate < latestCodeCommit) {
             return {
               passed: false,
               reason: `VP evidence for phase ${phaseId} is stale (predates latest commit). Re-run VERIFY.`,
@@ -368,9 +388,12 @@ function validateCanExit(
     }
   }
 
+  // Load config once for staleness checks
+  const wmConfig = loadWmConfig()
+  const nonCodePaths = wmConfig.non_code_paths ?? ['.claude', '.kata', 'planning']
+
   // ── verification ── (only when a verify mechanism is configured)
   if (checks.has('verification')) {
-    const wmConfig = loadWmConfig()
     const codeReviewDisabled = wmConfig.reviews?.code_review === false
     const reviewer = wmConfig.reviews?.code_reviewer
     const hasVerifyMechanism =
@@ -378,7 +401,7 @@ function validateCanExit(
     const verificationRequired = !codeReviewDisabled && hasVerifyMechanism
 
     if (verificationRequired) {
-      const verifCheck = checkVerificationEvidence(issueNumber)
+      const verifCheck = checkVerificationEvidence(issueNumber, nonCodePaths)
       if (!verifCheck.passed && verifCheck.artifactType) {
         artifactType = verifCheck.artifactType
         reasons.push(
@@ -394,7 +417,7 @@ function validateCanExit(
 
   // ── tests_pass ──
   if (checks.has('tests_pass') && issueNumber) {
-    const testsCheck = checkTestsPass(issueNumber)
+    const testsCheck = checkTestsPass(issueNumber, nonCodePaths)
     if (!testsCheck.passed && testsCheck.reason) {
       reasons.push(testsCheck.reason)
     }
@@ -402,7 +425,7 @@ function validateCanExit(
 
   // ── verification_plan_executed ──
   if (checks.has('verification_plan_executed') && issueNumber) {
-    const vpCheck = checkVpEvidence(issueNumber)
+    const vpCheck = checkVpEvidence(issueNumber, nonCodePaths)
     if (!vpCheck.passed && vpCheck.reason) {
       reasons.push(vpCheck.reason)
     }

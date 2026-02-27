@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
+import { execSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import * as os from 'node:os'
@@ -444,6 +445,160 @@ describe('canExit', () => {
 
     const blockedByStale = result.reasons.some(
       (r) => r.includes('stale') || r.includes('Verification'),
+    )
+    expect(blockedByStale).toBe(true)
+  })
+})
+
+describe('non-code commit staleness', () => {
+  let tmpDir: string
+  const origEnv = process.env.CLAUDE_PROJECT_DIR
+  const origSessionId = process.env.CLAUDE_SESSION_ID
+  let origCwd: string
+
+  function gitIn(cmd: string): string {
+    return execSync(cmd, { cwd: tmpDir, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim()
+  }
+
+  beforeEach(() => {
+    origCwd = process.cwd()
+    tmpDir = join(
+      os.tmpdir(),
+      `wm-canexit-noncode-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    )
+    mkdirSync(tmpDir, { recursive: true })
+    // chdir so git commands in can-exit.ts run against our test repo
+    process.chdir(tmpDir)
+    // Init a real git repo for commit timestamp tests
+    gitIn('git init')
+    gitIn('git config user.email "test@test.com"')
+    gitIn('git config user.name "Test"')
+
+    mkdirSync(join(tmpDir, '.claude', 'sessions'), { recursive: true })
+    mkdirSync(join(tmpDir, '.claude', 'workflows'), { recursive: true })
+    process.env.CLAUDE_PROJECT_DIR = tmpDir
+    process.env.CLAUDE_SESSION_ID = '00000000-0000-0000-0000-000000000003'
+  })
+
+  afterEach(() => {
+    process.chdir(origCwd)
+    rmSync(tmpDir, { recursive: true, force: true })
+    if (origEnv !== undefined) {
+      process.env.CLAUDE_PROJECT_DIR = origEnv
+    } else {
+      delete process.env.CLAUDE_PROJECT_DIR
+    }
+    if (origSessionId !== undefined) {
+      process.env.CLAUDE_SESSION_ID = origSessionId
+    } else {
+      delete process.env.CLAUDE_SESSION_ID
+    }
+    process.exitCode = undefined
+  })
+
+  function createSessionState(state: Record<string, unknown>): void {
+    const sessionId = process.env.CLAUDE_SESSION_ID!
+    const sessionDir = join(tmpDir, '.claude', 'sessions', sessionId)
+    mkdirSync(sessionDir, { recursive: true })
+    writeFileSync(
+      join(sessionDir, 'state.json'),
+      JSON.stringify({
+        sessionId,
+        completedPhases: [],
+        phases: [],
+        modeHistory: [],
+        modeState: {},
+        beadsCreated: [],
+        editedFiles: [],
+        ...state,
+      }),
+    )
+  }
+
+  it('non-code-only commit after evidence does NOT invalidate it', async () => {
+    writeFileSync(
+      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
+      jsYaml.dump({ reviews: { code_reviewer: 'codex' } }),
+    )
+
+    createSessionState({
+      sessionType: 'implementation',
+      currentMode: 'implementation',
+      issueNumber: 500,
+    })
+
+    // 1. Create a code file and commit it
+    writeFileSync(join(tmpDir, 'app.ts'), 'export const x = 1')
+    gitIn('git add app.ts')
+    gitIn('git commit -m "add code"')
+
+    // 2. Create evidence with timestamp AFTER the code commit
+    const evidenceDir = join(tmpDir, '.claude', 'verification-evidence')
+    mkdirSync(evidenceDir, { recursive: true })
+    const evidenceTs = new Date(Date.now() + 1000).toISOString()
+    writeFileSync(
+      join(evidenceDir, '500.json'),
+      JSON.stringify({ passed: true, verifiedAt: evidenceTs }),
+    )
+
+    // 3. Make a non-code-only commit (in .claude/)
+    writeFileSync(join(tmpDir, '.claude', 'some-file.json'), '{}')
+    gitIn('git add .claude/some-file.json')
+    gitIn('git commit -m "commit non-code file"')
+
+    // The non-code commit is now the latest commit overall, but NOT the latest code commit
+    const output = await captureCanExit(['--json', `--session=${process.env.CLAUDE_SESSION_ID}`])
+    const result = JSON.parse(output) as { canExit: boolean; reasons: string[] }
+
+    const blockedByStale = result.reasons.some(
+      (r) => r.includes('stale') || r.includes('Verification evidence is stale'),
+    )
+    expect(blockedByStale).toBe(false)
+  })
+
+  it('code commit after evidence DOES invalidate it', async () => {
+    writeFileSync(
+      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
+      jsYaml.dump({ reviews: { code_reviewer: 'codex' } }),
+    )
+
+    createSessionState({
+      sessionType: 'implementation',
+      currentMode: 'implementation',
+      issueNumber: 501,
+    })
+
+    // 1. Initial code commit
+    writeFileSync(join(tmpDir, 'app.ts'), 'export const x = 1')
+    gitIn('git add app.ts')
+    gitIn('git commit -m "add code"')
+
+    // 2. Create evidence with timestamp just after code commit
+    const evidenceDir = join(tmpDir, '.claude', 'verification-evidence')
+    mkdirSync(evidenceDir, { recursive: true })
+    const evidenceTs = new Date(Date.now() + 1000).toISOString()
+    writeFileSync(
+      join(evidenceDir, '501.json'),
+      JSON.stringify({ passed: true, verifiedAt: evidenceTs }),
+    )
+
+    // 3. Make a NEW code commit with committer date after evidence
+    // Must set GIT_COMMITTER_DATE because %cI reads committer date (--date only sets author date)
+    const futureDate = new Date(Date.now() + 5000).toISOString()
+    writeFileSync(join(tmpDir, 'app.ts'), 'export const x = 2')
+    gitIn('git add app.ts')
+    execSync('git commit -m "update code"', {
+      cwd: tmpDir,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, GIT_COMMITTER_DATE: futureDate, GIT_AUTHOR_DATE: futureDate },
+    })
+
+    const output = await captureCanExit(['--json', `--session=${process.env.CLAUDE_SESSION_ID}`])
+    const result = JSON.parse(output) as { canExit: boolean; reasons: string[] }
+
+    const blockedByStale = result.reasons.some(
+      (r) => r.includes('stale') || r.includes('Verification evidence is stale'),
     )
     expect(blockedByStale).toBe(true)
   })
