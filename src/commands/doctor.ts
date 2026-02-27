@@ -2,7 +2,7 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { findProjectDir, getPackageRoot, getSessionsDir, getProjectWmConfigPath } from '../session/lookup.js'
+import { findProjectDir, getPackageRoot, getSessionsDir } from '../session/lookup.js'
 
 interface DiagnosticResult {
   check: string
@@ -156,54 +156,22 @@ function fixMissingHooks(claudeDir: string, missingHooks: string[]): void {
 }
 
 /**
- * Check kata version compatibility between running kata and wm.yaml
+ * Get running kata version from package.json
  */
-function checkVersionCompatibility(claudeDir: string): {
-  running: string
-  configured: string | null
-  compatible: boolean
-} {
-  // Get running version from package.json
-  let running = '0.0.0'
+function getRunningVersion(): string {
   try {
     const pkgPath = path.join(getPackageRoot(), 'package.json')
     if (existsSync(pkgPath)) {
       const raw = readFileSync(pkgPath, 'utf-8')
       const parsed = JSON.parse(raw) as { version?: string }
       if (parsed.version) {
-        running = parsed.version
+        return parsed.version
       }
     }
   } catch {
     // Fall through
   }
-
-  // Get configured version from wm.yaml
-  let configured: string | null = null
-  const wmYamlPath = getProjectWmConfigPath(claudeDir)
-  if (existsSync(wmYamlPath)) {
-    try {
-      const raw = readFileSync(wmYamlPath, 'utf-8')
-      const match = raw.match(/wm_version:\s*["']?([^"'\n]+)/)
-      if (match) {
-        configured = match[1].trim()
-      }
-    } catch {
-      // Fall through
-    }
-  }
-
-  // Version compatibility check (major version must match)
-  let compatible = true
-  if (configured) {
-    const runningMajor = running.split('.')[0]
-    const configuredMajor = configured.split('.')[0]
-    if (runningMajor !== configuredMajor) {
-      compatible = false
-    }
-  }
-
-  return { running, configured, compatible }
+  return '0.0.0'
 }
 
 export async function doctor(args: string[]): Promise<void> {
@@ -298,30 +266,13 @@ export async function doctor(args: string[]): Promise<void> {
     })
   }
 
-  // Check 8: Version compatibility
-  const versionCheck = checkVersionCompatibility(claudeDir)
-  if (versionCheck.configured && !versionCheck.compatible) {
-    diagnostics.push({
-      check: 'version_compatibility',
-      status: 'warning',
-      message: `Version mismatch: running ${versionCheck.running}, configured ${versionCheck.configured}`,
-      fixable: false,
-    })
-  } else if (versionCheck.configured) {
-    diagnostics.push({
-      check: 'version_compatibility',
-      status: 'ok',
-      message: `Version: ${versionCheck.running} (config: ${versionCheck.configured})`,
-      fixable: false,
-    })
-  } else {
-    diagnostics.push({
-      check: 'version_compatibility',
-      status: 'ok',
-      message: `Version: ${versionCheck.running} (no wm.yaml configured)`,
-      fixable: false,
-    })
-  }
+  // Check 8: Version info
+  diagnostics.push({
+    check: 'version',
+    status: 'ok',
+    message: `Version: ${getRunningVersion()}`,
+    fixable: false,
+  })
 
   const errors = diagnostics.filter((d) => d.status === 'error').length
   const warnings = diagnostics.filter((d) => d.status === 'warning').length

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'bun:test'
-import { STOP_CONDITION_TYPES, VALID_CATEGORIES, ModeConfigSchema } from './schema.js'
+import { STOP_CONDITION_TYPES, VALID_CATEGORIES } from './schema.js'
+import { KataModeConfigSchema } from '../config/kata-config.js'
 
 describe('STOP_CONDITION_TYPES', () => {
   it('contains expected conditions', () => {
@@ -27,12 +28,9 @@ describe('VALID_CATEGORIES', () => {
   })
 })
 
-describe('ModeConfigSchema stop_conditions validation', () => {
+describe('KataModeConfigSchema stop_conditions validation', () => {
   const validMode = {
-    name: 'Test',
-    description: 'Test mode',
     template: 'test.md',
-    category: 'special',
   }
 
   it('accepts valid stop conditions', () => {
@@ -41,7 +39,7 @@ describe('ModeConfigSchema stop_conditions validation', () => {
       stop_conditions: ['tasks_complete', 'committed'],
     }
 
-    const result = ModeConfigSchema.safeParse(data)
+    const result = KataModeConfigSchema.safeParse(data)
     expect(result.success).toBe(true)
   })
 
@@ -51,7 +49,7 @@ describe('ModeConfigSchema stop_conditions validation', () => {
       stop_conditions: ['tasks_complete', 'bogus'],
     }
 
-    const result = ModeConfigSchema.safeParse(data)
+    const result = KataModeConfigSchema.safeParse(data)
     expect(result.success).toBe(false)
   })
 
@@ -61,45 +59,51 @@ describe('ModeConfigSchema stop_conditions validation', () => {
       stop_conditions: [],
     }
 
-    const result = ModeConfigSchema.safeParse(data)
+    const result = KataModeConfigSchema.safeParse(data)
     expect(result.success).toBe(true)
   })
 })
 
-describe('ModeConfigSchema micro_planning removed', () => {
-  it('does not include micro_planning in schema shape', () => {
-    // ModeConfigSchema is strict (no passthrough), so extra fields would be stripped
-    // The important thing is the field is not in the type
-    const shape = ModeConfigSchema.shape
-    expect('micro_planning' in shape).toBe(false)
+describe('KataModeConfigSchema does not have removed fields', () => {
+  it('does not include strong_signals in schema shape', () => {
+    const shape = KataModeConfigSchema.shape
+    expect('strong_signals' in shape).toBe(false)
+  })
+
+  it('does not include behavior in schema shape', () => {
+    const shape = KataModeConfigSchema.shape
+    expect('behavior' in shape).toBe(false)
+  })
+
+  it('does not include category in schema shape', () => {
+    const shape = KataModeConfigSchema.shape
+    expect('category' in shape).toBe(false)
+  })
+
+  it('does not include notes_file_template in schema shape', () => {
+    const shape = KataModeConfigSchema.shape
+    expect('notes_file_template' in shape).toBe(false)
   })
 })
 
-describe('ModeConfigSchema new fields', () => {
-  const validMode = {
-    name: 'Test',
-    description: 'Test mode',
-    template: 'test.md',
-    category: 'special',
-  }
-
-  it('accepts notes_file_template', () => {
-    const data = {
-      ...validMode,
-      notes_file_template: 'planning/research/{date}-{slug}.md',
-    }
-
-    const result = ModeConfigSchema.safeParse(data)
-    expect(result.success).toBe(true)
-  })
-
+describe('KataModeConfigSchema kept fields', () => {
   it('accepts issue_label', () => {
     const data = {
-      ...validMode,
+      template: 'test.md',
       issue_label: 'bug',
     }
 
-    const result = ModeConfigSchema.safeParse(data)
+    const result = KataModeConfigSchema.safeParse(data)
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts issue_handling', () => {
+    const data = {
+      template: 'test.md',
+      issue_handling: 'required',
+    }
+
+    const result = KataModeConfigSchema.safeParse(data)
     expect(result.success).toBe(true)
   })
 })

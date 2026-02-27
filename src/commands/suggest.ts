@@ -1,14 +1,12 @@
-// kata suggest - Detect mode from user message and output behavioral guidance
-import { loadModesConfig } from '../config/cache.js'
-import type { ModeConfig, ModesConfig, ModeBehavior } from '../state/schema.js'
-import { loadWmConfig } from '../config/wm-config.js'
+// kata suggest - Detect mode from user message and output entry guidance
+import { loadKataConfig } from '../config/kata-config.js'
+import type { KataConfig, KataModeConfig } from '../config/kata-config.js'
 
 interface SuggestResult {
   mode: string | null
   confidence: 'high' | 'medium' | 'low'
   guidance: string
   command: string | null
-  behavior: ModeBehavior | null
   searchIntent?: SearchIntent | null
 }
 
@@ -23,23 +21,11 @@ interface SearchIntent {
  */
 function detectMode(
   message: string,
-  config: ModesConfig,
+  config: KataConfig,
 ): { mode: string; confidence: 'high' | 'medium' | 'low' } | null {
   const lowerMessage = message.toLowerCase()
 
-  // First pass: check strong_signals (high confidence)
-  for (const [modeId, modeConfig] of Object.entries(config.modes)) {
-    if (modeConfig.deprecated) continue
-
-    const strongSignals = modeConfig.strong_signals || []
-    for (const signal of strongSignals) {
-      if (lowerMessage.includes(signal.toLowerCase())) {
-        return { mode: modeId, confidence: 'high' }
-      }
-    }
-  }
-
-  // Second pass: check intent_keywords (medium confidence)
+  // First pass: check intent_keywords (high for prefix patterns, medium otherwise)
   for (const [modeId, modeConfig] of Object.entries(config.modes)) {
     if (modeConfig.deprecated) continue
 
@@ -55,7 +41,7 @@ function detectMode(
     }
   }
 
-  // Third pass: check aliases (low confidence)
+  // Second pass: check aliases (low confidence)
   for (const [modeId, modeConfig] of Object.entries(config.modes)) {
     if (modeConfig.deprecated) continue
 
@@ -88,13 +74,13 @@ function extractContext(message: string): {
   const issueNumber = issueMatch ? Number.parseInt(issueMatch[1], 10) : null
 
   // Check for research doc reference (uses config-driven path)
-  const wmConfig = loadWmConfig()
-  const researchPathPattern = (wmConfig.research_path ?? 'planning/research').replace(/\//g, '\\/')
+  const kataConfig = loadKataConfig()
+  const researchPathPattern = kataConfig.research_path.replace(/\//g, '\\/')
   const researchMatch = message.match(new RegExp(`${researchPathPattern}\\/[^\\s]+\\.md`, 'i'))
   const researchDocPath = researchMatch ? researchMatch[0] : null
 
   // Check for spec file reference (uses config-driven path)
-  const specPathPattern = (wmConfig.spec_path ?? 'planning/specs').replace(/\//g, '\\/')
+  const specPathPattern = kataConfig.spec_path.replace(/\//g, '\\/')
   const specMatch = message.match(new RegExp(`${specPathPattern}\\/[^\\s]+\\.md`, 'i'))
   const specFilePath = specMatch ? specMatch[0] : null
 
@@ -186,9 +172,9 @@ function detectSearchIntent(message: string): SearchIntent | null {
   }
 
   // Check for spec search
-  const config = loadWmConfig()
-  const specPath = config.spec_path ?? 'planning/specs'
-  const researchPath = config.research_path ?? 'planning/research'
+  const config = loadKataConfig()
+  const specPath = config.spec_path
+  const researchPath = config.research_path
 
   for (const pattern of specPatterns) {
     if (pattern.test(lowerMessage)) {
@@ -282,7 +268,7 @@ function inferTitle(message: string): string {
  */
 function buildCommand(
   mode: string,
-  modeConfig: ModeConfig,
+  modeConfig: KataModeConfig,
   context: ReturnType<typeof extractContext>,
   message: string,
 ): string {
@@ -306,13 +292,12 @@ function buildCommand(
  */
 function buildGuidance(
   mode: string,
-  modeConfig: ModeConfig,
+  modeConfig: KataModeConfig,
   context: ReturnType<typeof extractContext>,
-  globalBehavior: ModesConfig['global_behavior'],
 ): string {
   const lines: string[] = []
 
-  lines.push(`# ${modeConfig.name} Mode Detected`)
+  lines.push(`# ${modeConfig.name ?? mode} Mode Detected`)
   lines.push('')
 
   // Entry command
@@ -320,75 +305,8 @@ function buildGuidance(
   lines.push(`**ENTER:** \`${command}\``)
   lines.push('')
 
-  // Behavior guidance
-  const behavior = modeConfig.behavior
-  if (behavior) {
-    // Bias
-    if (behavior.bias) {
-      const biasMap = {
-        act: "**Bias: ACT** - Do it, don't ask for permission",
-        ask: '**Bias: ASK** - Clarify before proceeding',
-        cautious: '**Bias: CAUTIOUS** - Verify before destructive actions',
-      }
-      lines.push(biasMap[behavior.bias])
-      lines.push('')
-    }
-
-    // Entry actions
-    if (behavior.entry_actions?.length) {
-      lines.push("## Auto-Actions (don't ask, just do)")
-      for (const action of behavior.entry_actions) {
-        lines.push(`- ${action.check} → ${action.then}`)
-      }
-      lines.push('')
-    }
-
-    // Context-specific guidance
-    if (behavior.context_signals?.length) {
-      lines.push('## Context Signals')
-      for (const signal of behavior.context_signals) {
-        // Check if this signal matches current context
-        const applies =
-          (signal.pattern.includes('research') && context.hasResearchDoc) ||
-          (signal.pattern.includes('spec') && context.hasSpecFile) ||
-          (signal.pattern.includes('issue') && context.hasIssueNumber)
-
-        if (applies) {
-          lines.push(`- **APPLIES:** ${signal.pattern}`)
-          lines.push(`  → ${signal.inference}`)
-          lines.push(`  → **Action:** ${signal.action}`)
-        }
-      }
-      lines.push('')
-    }
-
-    // Never ask
-    if (behavior.never_ask?.length) {
-      lines.push('## Never Ask')
-      for (const na of behavior.never_ask) {
-        lines.push(`- ❌ "${na.question}"`)
-        lines.push(`  ✅ Instead: ${na.instead}`)
-      }
-      lines.push('')
-    }
-
-    // OK to ask
-    if (behavior.ok_to_ask?.length) {
-      lines.push('## OK to Ask (only when)')
-      for (const reason of behavior.ok_to_ask) {
-        lines.push(`- ${reason}`)
-      }
-      lines.push('')
-    }
-  }
-
-  // Global never ask
-  if (globalBehavior?.never_ask_globally?.length) {
-    lines.push('## Global Rules')
-    lines.push('Never ask:')
-    for (const q of globalBehavior.never_ask_globally) {
-      lines.push(`- "${q}"`)
-    }
+  if (modeConfig.description) {
+    lines.push(modeConfig.description)
     lines.push('')
   }
 
@@ -416,7 +334,6 @@ export async function suggest(args: string[]): Promise<void> {
       confidence: 'high',
       guidance: buildSearchGuidance(searchIntent),
       command: searchIntent.commands[0] || null,
-      behavior: null,
       searchIntent,
     }
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
@@ -424,8 +341,8 @@ export async function suggest(args: string[]): Promise<void> {
     return
   }
 
-  // Load modes config (with project-level override if present)
-  const config = await loadModesConfig()
+  // Load unified kata config
+  const config = loadKataConfig()
 
   // Detect mode
   const detected = detectMode(message, config)
@@ -451,7 +368,6 @@ ${modeList}
 
 Pick the mode that matches the user's intent.`,
       command: null,
-      behavior: null,
     }
 
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
@@ -469,13 +385,12 @@ Pick the mode that matches the user's intent.`,
       const result: SuggestResult = {
         mode: modeConfig.redirect_to,
         confidence: detected.confidence,
-        guidance: `# ${modeConfig.name} is Deprecated
+        guidance: `# ${modeConfig.name ?? modeConfig.redirect_to} is Deprecated
 
-Redirecting to **${redirectConfig.name}** mode.
+Redirecting to **${redirectConfig.name ?? modeConfig.redirect_to}** mode.
 
-\`kata enter${modeConfig.redirect_to}\``,
-        command: `kata enter${modeConfig.redirect_to}`,
-        behavior: redirectConfig.behavior || null,
+\`kata enter ${modeConfig.redirect_to}\``,
+        command: `kata enter ${modeConfig.redirect_to}`,
       }
       // biome-ignore lint/suspicious/noConsole: intentional CLI output
       console.log(JSON.stringify(result))
@@ -483,7 +398,7 @@ Redirecting to **${redirectConfig.name}** mode.
     }
   }
 
-  const guidance = buildGuidance(detected.mode, modeConfig, context, config.global_behavior)
+  const guidance = buildGuidance(detected.mode, modeConfig, context)
   const command = buildCommand(detected.mode, modeConfig, context, message)
 
   const result: SuggestResult = {
@@ -491,7 +406,6 @@ Redirecting to **${redirectConfig.name}** mode.
     confidence: detected.confidence,
     guidance,
     command,
-    behavior: modeConfig.behavior || null,
   }
 
   // biome-ignore lint/suspicious/noConsole: intentional CLI output

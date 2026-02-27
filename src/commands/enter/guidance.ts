@@ -1,5 +1,5 @@
 // Workflow guidance generation for enter command
-import { loadWmConfig } from '../../config/wm-config.js'
+import { loadKataConfig } from '../../config/kata-config.js'
 import type { PhaseDefinition, SubphasePattern } from '../../validation/index.js'
 import type { SpecPhase } from '../../yaml/index.js'
 
@@ -183,7 +183,7 @@ export function buildWorkflowGuidance(
   // Tasks are managed via Claude Code's native task system (TaskUpdate/TaskList)
   const workflow: string[] = []
   if (mode === 'implementation') {
-    const specPath = loadWmConfig().spec_path ?? 'planning/specs'
+    const specPath = loadKataConfig().spec_path
     workflow.push(
       'Follow the tasks closely - they define your workflow.',
       `Reference the spec for detailed requirements: ${specPath}/<issue>-*.md`,

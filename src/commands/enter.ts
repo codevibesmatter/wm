@@ -9,7 +9,7 @@ import {
 } from '../session/lookup.js'
 import { readState, stateExists } from '../state/reader.js'
 import { writeState } from '../state/writer.js'
-import { loadModesConfig, resolveModeAlias } from '../config/cache.js'
+import { loadKataConfig, resolveKataModeAlias } from '../config/kata-config.js'
 import { generateWorkflowId, generateWorkflowIdForIssue } from '../utils/workflow-id.js'
 import type { SessionState } from '../state/schema.js'
 import { validatePhases, formatValidationErrors } from '../validation/index.js'
@@ -234,9 +234,8 @@ async function enterWithCustomTemplate(
       title: p.task_config!.title,
     }))
 
-  // Build guidance (load global_behavior for task_system rules)
-  const modesConfig = await loadModesConfig()
-  const guidance = buildWorkflowGuidance(workflowId, modeName, null, phaseTitles, undefined, modesConfig.global_behavior?.task_system)
+  // Build guidance
+  const guidance = buildWorkflowGuidance(workflowId, modeName, null, phaseTitles, undefined)
 
   // Output human-readable guidance - native tasks mode
   if (guidance.requiredTodos.length > 0 && !parsed.dryRun) {
@@ -321,9 +320,9 @@ export async function enter(args: string[]): Promise<void> {
   if (!parsed.skipCleanup && !parsed.dryRun) {
     try {
       const { cleanupOldSessions } = await import('../utils/session-cleanup.js')
-      const { loadWmConfig } = await import('../config/wm-config.js')
-      const wmConfig = loadWmConfig()
-      const retentionDays = wmConfig.session_retention_days ?? 7
+      const { loadKataConfig: loadCfg } = await import('../config/kata-config.js')
+      const kataCfg = loadCfg()
+      const retentionDays = kataCfg.session_retention_days
       const { getKataDir } = await import('../session/lookup.js')
       const projectRoot = findProjectDir()
       const claudeDir = join(projectRoot, getKataDir(projectRoot))
@@ -353,8 +352,8 @@ export async function enter(args: string[]): Promise<void> {
     return
   }
 
-  const config = await loadModesConfig()
-  const canonical = resolveModeAlias(config, parsed.mode)
+  const config = loadKataConfig()
+  const canonical = resolveKataModeAlias(config, parsed.mode)
 
   const modeConfig = config.modes[canonical]
   if (!modeConfig) {
@@ -606,7 +605,7 @@ export async function enter(args: string[]): Promise<void> {
   // Determine phases to use: spec phases first, then template phases, then modes.yaml fallback
   const effectivePhases = specPhases
     ? specPhases.map((p) => p.id)
-    : (templatePhases?.map((p) => p.id) ?? modeConfig.phases ?? [])
+    : (templatePhases?.map((p) => p.id) ?? [])
 
   const updated: SessionState = {
     ...state,
@@ -737,7 +736,7 @@ export async function enter(args: string[]): Promise<void> {
     specPhases,
     phaseTitles,
     templatePhases ?? undefined,
-    config.global_behavior?.task_system,
+    undefined,
     resolvedSubphasePattern.length > 0 ? resolvedSubphasePattern : undefined,
   )
 

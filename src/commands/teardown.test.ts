@@ -57,8 +57,8 @@ describe('teardown', () => {
     mkdirSync(join(tmpDir, '.claude', 'sessions', 'some-session'), { recursive: true })
     mkdirSync(join(tmpDir, '.claude', 'workflows'), { recursive: true })
 
-    // Write wm.yaml
-    writeFileSync(join(tmpDir, '.claude', 'workflows', 'wm.yaml'), 'spec_path: planning/specs\n')
+    // Write kata.yaml (teardown deletes kata.yaml, not wm.yaml)
+    writeFileSync(join(tmpDir, '.claude', 'workflows', 'kata.yaml'), 'spec_path: planning/specs\n')
 
     // Write settings.json with kata hooks and a non-kata hook
     writeFileSync(
@@ -156,14 +156,14 @@ describe('teardown', () => {
     expect(sessionStartEntries![0].hooks[0].command).toBe('my-custom-tool session-start')
   })
 
-  it('deletes wm.yaml', async () => {
+  it('deletes kata.yaml', async () => {
     createWmProject()
-    const wmYamlPath = join(tmpDir, '.claude', 'workflows', 'wm.yaml')
-    expect(existsSync(wmYamlPath)).toBe(true)
+    const kataYamlPath = join(tmpDir, '.claude', 'workflows', 'kata.yaml')
+    expect(existsSync(kataYamlPath)).toBe(true)
 
     await captureTeardown(['--yes'], tmpDir)
 
-    expect(existsSync(wmYamlPath)).toBe(false)
+    expect(existsSync(kataYamlPath)).toBe(false)
   })
 
   it('preserves sessions/', async () => {
@@ -199,14 +199,14 @@ describe('teardown', () => {
 
   it('dry-run shows planned actions without making changes', async () => {
     createWmProject()
-    const wmYamlPath = join(tmpDir, '.claude', 'workflows', 'wm.yaml')
+    const kataYamlPath = join(tmpDir, '.claude', 'workflows', 'kata.yaml')
 
     const output = await captureTeardown(['--yes', '--dry-run'], tmpDir)
     expect(output).toContain('[DRY RUN]')
     expect(output).toContain('No changes made')
 
     // Files should still exist
-    expect(existsSync(wmYamlPath)).toBe(true)
+    expect(existsSync(kataYamlPath)).toBe(true)
   })
 
   it('requires --yes to confirm (exits with code 1 without it)', async () => {
@@ -217,7 +217,7 @@ describe('teardown', () => {
     expect(process.exitCode).toBe(1)
 
     // Files should still exist
-    const wmYamlPath = join(tmpDir, '.claude', 'workflows', 'wm.yaml')
-    expect(existsSync(wmYamlPath)).toBe(true)
+    const kataYamlPath = join(tmpDir, '.claude', 'workflows', 'kata.yaml')
+    expect(existsSync(kataYamlPath)).toBe(true)
   })
 })

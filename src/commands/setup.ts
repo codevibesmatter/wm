@@ -6,8 +6,18 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { join } from 'node:path'
 import jsYaml from 'js-yaml'
 import { getDefaultProfile, type SetupProfile } from '../config/setup-profile.js'
-import type { WmConfig } from '../config/wm-config.js'
-import { getPackageRoot, findProjectDir, getKataDir, getSessionsDir, getProjectTemplatesDir, getProjectWmConfigPath } from '../session/lookup.js'
+// WmConfig inlined — setup.ts still generates wm.yaml for backwards compat
+// TODO(#30 P2.4): generate kata.yaml instead and remove this type
+type WmConfig = Record<string, unknown> & {
+  project?: { name?: string; test_command?: string; ci?: string | null }
+  spec_path?: string
+  research_path?: string
+  session_retention_days?: number
+  reviews?: { spec_review?: boolean; code_review?: boolean; code_reviewer?: string | null }
+  wm_version?: string
+}
+import { getPackageRoot, findProjectDir, getKataDir, getSessionsDir, getProjectTemplatesDir } from '../session/lookup.js'
+import { getKataConfigPath } from '../config/kata-config.js'
 
 /**
  * Resolve the absolute path to the kata binary.
@@ -238,30 +248,25 @@ export function mergeHooksIntoSettings(
 }
 
 /**
- * Generate wm.yaml content from a WmConfig object
+ * Generate kata.yaml content from a config object
  */
-function generateWmYaml(config: WmConfig): string {
+function generateKataYaml(config: Record<string, unknown>): string {
   return jsYaml.dump(config, { lineWidth: 120, noRefs: true })
 }
 
 /**
- * Build WmConfig from setup profile, merged with any existing wm.yaml.
- * Existing values win for all fields except wm_version (always updated to current).
- * This prevents re-running setup from silently erasing verify_command,
- * prime_extensions, mode_config, or other custom configuration.
+ * Build kata.yaml config from setup profile, merged with any existing kata.yaml.
+ * Existing values win for project-level fields.
+ * Modes come from existing kata.yaml or batteries/kata.yaml seed.
  */
-function buildWmConfig(projectRoot: string, profile: SetupProfile): WmConfig {
-  // Only carry code_review when explicitly enabled (true).
-  // False represents "unset" in the profile (same as wm-config.ts getDefaultConfig),
-  // meaning "enabled when a reviewer is configured". Writing false would silently
-  // disable verification for existing configs that rely on the implicit default.
+function buildKataConfig(projectRoot: string, profile: SetupProfile): Record<string, unknown> {
   const profileReviews: WmConfig['reviews'] = {
     spec_review: profile.reviews.spec_review,
     code_reviewer: profile.reviews.code_reviewer,
     ...(profile.reviews.code_review ? { code_review: true } : {}),
   }
 
-  const fromProfile: WmConfig = {
+  const fromProfile: Record<string, unknown> = {
     project: {
       name: profile.project_name,
       test_command: profile.test_command ?? undefined,
@@ -271,67 +276,53 @@ function buildWmConfig(projectRoot: string, profile: SetupProfile): WmConfig {
     research_path: profile.research_path,
     session_retention_days: profile.session_retention_days,
     reviews: profileReviews,
-    wm_version: getWmVersion(),
   }
 
-  const wmYamlPath = getProjectWmConfigPath(projectRoot)
-  if (!existsSync(wmYamlPath)) return fromProfile
-
-  try {
-    const raw = readFileSync(wmYamlPath, 'utf-8')
-    const existing = jsYaml.load(raw) as WmConfig | null
-    if (!existing || typeof existing !== 'object') {
-      // Malformed YAML — warn and fall back to profile rather than silently overwriting
-      process.stderr.write(
-        `kata setup: warning: existing wm.yaml is malformed; using auto-detected defaults\n`,
-      )
-      return fromProfile
+  // Try existing kata.yaml first
+  const kataYamlPath = getKataConfigPath(projectRoot)
+  if (existsSync(kataYamlPath)) {
+    try {
+      const raw = readFileSync(kataYamlPath, 'utf-8')
+      const existing = jsYaml.load(raw) as Record<string, unknown> | null
+      if (existing && typeof existing === 'object') {
+        return {
+          ...fromProfile,
+          ...existing,
+          project: { ...(fromProfile.project as Record<string, unknown>), ...((existing.project as Record<string, unknown>) ?? {}) },
+          reviews: { ...profileReviews, ...((existing.reviews as Record<string, unknown>) ?? {}) },
+        }
+      }
+    } catch {
+      process.stderr.write(`kata setup: warning: could not parse existing kata.yaml; using defaults\n`)
     }
+  }
 
-    // Existing config wins for all fields; always bump wm_version
-    return {
-      ...fromProfile,
-      ...existing,
-      project: { ...fromProfile.project, ...existing.project },
-      reviews: { ...fromProfile.reviews, ...existing.reviews },
-      wm_version: getWmVersion(),
+  // Seed modes from batteries/kata.yaml
+  try {
+    const seedPath = join(getPackageRoot(), 'batteries', 'kata.yaml')
+    if (existsSync(seedPath)) {
+      const raw = readFileSync(seedPath, 'utf-8')
+      const seed = jsYaml.load(raw) as Record<string, unknown> | null
+      if (seed && typeof seed === 'object' && seed.modes) {
+        fromProfile.modes = seed.modes
+      }
     }
   } catch {
-    // Parse error — warn and fall back to profile
-    process.stderr.write(
-      `kata setup: warning: could not parse existing wm.yaml; using auto-detected defaults\n`,
-    )
-    return fromProfile
+    // No seed available
   }
+
+  return fromProfile
 }
 
-/**
- * Read wm version from package.json
- */
-function getWmVersion(): string {
-  try {
-    const pkgPath = join(getPackageRoot(), 'package.json')
-    if (existsSync(pkgPath)) {
-      const raw = readFileSync(pkgPath, 'utf-8')
-      const parsed = JSON.parse(raw) as { version?: string }
-      if (parsed.version) return parsed.version
-    }
-  } catch {
-    // Fall through
-  }
-  return '0.0.0'
-}
 
 /**
- * Write wm.yaml to the kata config directory.
- * For new projects (.kata/ layout): .kata/wm.yaml
- * For existing projects (.claude/ layout): .claude/workflows/wm.yaml
+ * Write kata.yaml to the project config directory.
  */
-function writeWmYaml(cwd: string, content: string): void {
-  const wmYamlPath = getProjectWmConfigPath(cwd)
-  const dir = join(wmYamlPath, '..')
+function writeKataYaml(cwd: string, content: string): void {
+  const kataYamlPath = getKataConfigPath(cwd)
+  const dir = join(kataYamlPath, '..')
   mkdirSync(dir, { recursive: true })
-  writeFileSync(wmYamlPath, content, 'utf-8')
+  writeFileSync(kataYamlPath, content, 'utf-8')
 }
 
 /**
@@ -357,9 +348,9 @@ function resolveProjectRoot(cwd: string, explicitCwd: boolean): string {
 function applySetup(cwd: string, profile: SetupProfile, explicitCwd: boolean): void {
   const projectRoot = resolveProjectRoot(cwd, explicitCwd)
 
-  // Build merged config (existing wm.yaml fields win over auto-detected defaults)
-  const config = buildWmConfig(projectRoot, profile)
-  writeWmYaml(projectRoot, generateWmYaml(config))
+  // Build merged config (existing kata.yaml fields win over auto-detected defaults)
+  const config = buildKataConfig(projectRoot, profile)
+  writeKataYaml(projectRoot, generateKataYaml(config))
 
   // For fresh projects (no .kata/ or .claude/ yet), create .kata/ (new layout).
   // For existing projects, getKataDir() detects the active layout.

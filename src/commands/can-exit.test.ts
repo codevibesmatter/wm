@@ -41,6 +41,24 @@ describe('canExit', () => {
     tmpDir = makeTmpDir()
     mkdirSync(join(tmpDir, '.claude', 'sessions'), { recursive: true })
     mkdirSync(join(tmpDir, '.claude', 'workflows'), { recursive: true })
+    // Write baseline kata.yaml so loadKataConfig() finds it (no longer reads wm.yaml/modes.yaml)
+    // Include implementation + freeform modes with the stop_conditions used by test scenarios.
+    // Individual tests that need specific review config overwrite this file before calling canExit.
+    writeFileSync(
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      [
+        'spec_path: planning/specs',
+        'research_path: planning/research',
+        'modes:',
+        '  implementation:',
+        '    template: implementation.md',
+        '    stop_conditions: [tasks_complete, committed, pushed, verification, tests_pass, feature_tests_added]',
+        '  freeform:',
+        '    template: freeform.md',
+        '    stop_conditions: []',
+        '    aliases: ["qa"]',
+      ].join('\n') + '\n',
+    )
     process.env.CLAUDE_PROJECT_DIR = tmpDir
     process.env.CLAUDE_SESSION_ID = '00000000-0000-0000-0000-000000000002'
   })
@@ -80,12 +98,14 @@ describe('canExit', () => {
   }
 
   it('skips verification check when code_reviewer is not codex', async () => {
-    // Write wm.yaml WITHOUT codex reviewer
+    // Write kata.yaml WITHOUT codex reviewer (include implementation mode for stop_conditions)
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
       jsYaml.dump({
-        reviews: {
-          code_reviewer: null,
+        reviews: { code_reviewer: null },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
+          freeform: { template: 'freeform.md', stop_conditions: [], aliases: ['qa'] },
         },
       }),
     )
@@ -108,10 +128,11 @@ describe('canExit', () => {
 
   it('checks verification when code_reviewer is codex', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
       jsYaml.dump({
-        reviews: {
-          code_reviewer: 'codex',
+        reviews: { code_reviewer: 'codex' },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
         },
       }),
     )
@@ -134,10 +155,11 @@ describe('canExit', () => {
 
   it('checks verification when code_reviewer is gemini', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
       jsYaml.dump({
-        reviews: {
-          code_reviewer: 'gemini',
+        reviews: { code_reviewer: 'gemini' },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
         },
       }),
     )
@@ -157,11 +179,11 @@ describe('canExit', () => {
 
   it('skips verification when code_review is explicitly false', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
       jsYaml.dump({
-        reviews: {
-          code_reviewer: 'codex',
-          code_review: false,
+        reviews: { code_reviewer: 'codex', code_review: false },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
         },
       }),
     )
@@ -209,10 +231,11 @@ describe('canExit', () => {
 
   it('verification passes when evidence file exists with passed: true', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
       jsYaml.dump({
-        reviews: {
-          code_reviewer: 'codex',
+        reviews: { code_reviewer: 'codex' },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
         },
       }),
     )
@@ -241,8 +264,13 @@ describe('canExit', () => {
 
   it('checkTestsPass: blocks when no phase evidence files exist', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
-      jsYaml.dump({ reviews: { code_reviewer: null } }),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      jsYaml.dump({
+        reviews: { code_reviewer: null },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
+        },
+      }),
     )
 
     createSessionState({
@@ -260,8 +288,13 @@ describe('canExit', () => {
 
   it('checkTestsPass: passes when phase evidence file exists with overallPassed true', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
-      jsYaml.dump({ reviews: { code_reviewer: null } }),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      jsYaml.dump({
+        reviews: { code_reviewer: null },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
+        },
+      }),
     )
 
     createSessionState({
@@ -291,8 +324,13 @@ describe('canExit', () => {
 
   it('checkTestsPass: blocks when phase evidence overallPassed is false', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
-      jsYaml.dump({ reviews: { code_reviewer: null } }),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      jsYaml.dump({
+        reviews: { code_reviewer: null },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
+        },
+      }),
     )
 
     createSessionState({
@@ -322,8 +360,13 @@ describe('canExit', () => {
 
   it('checkVpEvidence: blocks when no VP evidence files exist', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
-      jsYaml.dump({ reviews: { code_reviewer: null } }),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      jsYaml.dump({
+        reviews: { code_reviewer: null },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'verification_plan_executed', 'feature_tests_added'] },
+        },
+      }),
     )
 
     createSessionState({
@@ -341,8 +384,13 @@ describe('canExit', () => {
 
   it('checkVpEvidence: passes when VP evidence exists with allStepsPassed true', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
-      jsYaml.dump({ reviews: { code_reviewer: null } }),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      jsYaml.dump({
+        reviews: { code_reviewer: null },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'verification_plan_executed', 'feature_tests_added'] },
+        },
+      }),
     )
 
     createSessionState({
@@ -384,8 +432,13 @@ describe('canExit', () => {
 
   it('checkVpEvidence: blocks when VP evidence has failing steps', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
-      jsYaml.dump({ reviews: { code_reviewer: null } }),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      jsYaml.dump({
+        reviews: { code_reviewer: null },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'verification_plan_executed', 'feature_tests_added'] },
+        },
+      }),
     )
 
     createSessionState({
@@ -419,8 +472,13 @@ describe('canExit', () => {
 
   it('checkVerificationEvidence: blocks when evidence timestamp predates latest commit', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
-      jsYaml.dump({ reviews: { code_reviewer: 'codex' } }),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      jsYaml.dump({
+        reviews: { code_reviewer: 'codex' },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
+        },
+      }),
     )
 
     createSessionState({
@@ -517,8 +575,13 @@ describe('non-code commit staleness', () => {
 
   it('non-code-only commit after evidence does NOT invalidate it', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
-      jsYaml.dump({ reviews: { code_reviewer: 'codex' } }),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      jsYaml.dump({
+        reviews: { code_reviewer: 'codex' },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
+        },
+      }),
     )
 
     createSessionState({
@@ -558,8 +621,13 @@ describe('non-code commit staleness', () => {
 
   it('code commit after evidence DOES invalidate it', async () => {
     writeFileSync(
-      join(tmpDir, '.claude', 'workflows', 'wm.yaml'),
-      jsYaml.dump({ reviews: { code_reviewer: 'codex' } }),
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      jsYaml.dump({
+        reviews: { code_reviewer: 'codex' },
+        modes: {
+          implementation: { template: 'implementation.md', stop_conditions: ['tasks_complete', 'committed', 'pushed', 'verification', 'tests_pass', 'feature_tests_added'] },
+        },
+      }),
     )
 
     createSessionState({

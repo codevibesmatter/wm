@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { findProjectDir } from '../session/lookup.js'
-import { loadWmConfig } from '../config/wm-config.js'
+import { loadKataConfig } from '../config/kata-config.js'
 
 interface ValidationResult {
   valid: boolean
@@ -20,7 +20,7 @@ function findSpecFile(issueNum: number): string | null {
   const projectDir = findProjectDir()
   if (!projectDir) return null
 
-  const specsDir = resolve(projectDir, loadWmConfig().spec_path ?? 'planning/specs')
+  const specsDir = resolve(projectDir, loadKataConfig().spec_path)
   if (!existsSync(specsDir)) return null
 
   try {

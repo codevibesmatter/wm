@@ -1,125 +1,68 @@
-// kata config — display resolved configuration with provenance
-import { existsSync, readFileSync } from 'node:fs'
+// kata config — display resolved configuration
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import jsYaml from 'js-yaml'
-import { findProjectDir, getUserConfigDir, getPackageRoot, getProjectWmConfigPath, getProjectTemplatesDir } from '../session/lookup.js'
-import { loadWmConfig, type WmConfig } from '../config/wm-config.js'
-import { loadModesConfig } from '../config/cache.js'
-
-type Provenance = 'default' | 'package' | 'user' | 'project'
+import { findProjectDir, getPackageRoot, getProjectTemplatesDir } from '../session/lookup.js'
+import { loadKataConfig, getKataConfigPath } from '../config/kata-config.js'
 
 /**
  * kata config --show
  *
- * Displays the resolved configuration with provenance annotations
- * showing which layer each value came from.
+ * Displays the resolved configuration from kata.yaml.
+ * Single file, no merge — provenance is always "project".
  */
 export async function config(args: string[]): Promise<void> {
   if (args.includes('--show') || args.length === 0) {
-    await showConfig()
+    showConfig()
   } else {
     process.stdout.write('Usage: kata config --show\n')
   }
 }
 
-async function showConfig(): Promise<void> {
-  // Load the resolved config
-  const resolved = loadWmConfig()
+function showConfig(): void {
+  const cfg = loadKataConfig()
+  const projectRoot = findProjectDir()
+  const configPath = getKataConfigPath(projectRoot)
 
-  // Load each layer independently for provenance
-  const userConfigPath = join(getUserConfigDir(), 'wm.yaml')
-  const userConfig = loadYamlFile(userConfigPath)
-
-  let projectConfig: WmConfig | null = null
-  try {
-    const projectRoot = findProjectDir()
-    const projectPath = getProjectWmConfigPath(projectRoot)
-    projectConfig = loadYamlFile(projectPath)
-  } catch {
-    // No project
-  }
-
-  // Show scalar fields with provenance
   process.stdout.write('kata config (resolved)\n')
-  process.stdout.write('═'.repeat(60) + '\n\n')
+  process.stdout.write('═'.repeat(60) + '\n')
+  process.stdout.write(`source: ${configPath}\n\n`)
 
-  showField('spec_path', resolved.spec_path, userConfig?.spec_path, projectConfig?.spec_path, 'planning/specs')
-  showField('research_path', resolved.research_path, userConfig?.research_path, projectConfig?.research_path, 'planning/research')
-  showField('session_retention_days', resolved.session_retention_days, userConfig?.session_retention_days, projectConfig?.session_retention_days, 7)
-  showField('hooks_dir', resolved.hooks_dir, userConfig?.hooks_dir, projectConfig?.hooks_dir, '.claude/hooks')
-  showField('wm_version', resolved.wm_version, userConfig?.wm_version, projectConfig?.wm_version, undefined)
-  showField('verify_command', resolved.verify_command, userConfig?.verify_command, projectConfig?.verify_command, undefined)
+  // Scalar fields
+  process.stdout.write(`spec_path: ${cfg.spec_path}\n`)
+  process.stdout.write(`research_path: ${cfg.research_path}\n`)
+  process.stdout.write(`session_retention_days: ${cfg.session_retention_days}\n`)
+  process.stdout.write(`verify_command: ${cfg.verify_command ?? '(not set)'}\n`)
 
   // Reviews section
-  if (resolved.reviews) {
+  if (cfg.reviews) {
     process.stdout.write('\nreviews:\n')
-    showField('  spec_review', resolved.reviews.spec_review, userConfig?.reviews?.spec_review, projectConfig?.reviews?.spec_review, false)
-    showField('  code_reviewer', resolved.reviews.code_reviewer, userConfig?.reviews?.code_reviewer, projectConfig?.reviews?.code_reviewer, null)
+    process.stdout.write(`  code_review: ${cfg.reviews.code_review ?? '(not set)'}\n`)
+    process.stdout.write(`  code_reviewer: ${cfg.reviews.code_reviewer ?? 'null'}\n`)
   }
 
   // Project section
-  if (resolved.project) {
+  if (cfg.project) {
     process.stdout.write('\nproject:\n')
-    showField('  name', resolved.project.name, undefined, projectConfig?.project?.name, undefined)
-    showField('  test_command', resolved.project.test_command, undefined, projectConfig?.project?.test_command, undefined)
-    showField('  build_command', resolved.project.build_command, undefined, projectConfig?.project?.build_command, undefined)
+    process.stdout.write(`  name: ${cfg.project.name ?? '(not set)'}\n`)
+    process.stdout.write(`  test_command: ${cfg.project.test_command ?? '(not set)'}\n`)
+    process.stdout.write(`  build_command: ${cfg.project.build_command ?? '(not set)'}\n`)
   }
 
   // Modes summary
   process.stdout.write('\n')
-  const modesConfig = await loadModesConfig()
-  const modeNames = Object.keys(modesConfig.modes).filter(
-    (m) => !modesConfig.modes[m].deprecated,
+  const modeNames = Object.keys(cfg.modes).filter(
+    (m) => !cfg.modes[m].deprecated,
   )
   process.stdout.write(`modes: ${modeNames.length} active modes\n`)
 
   // Template resolution summary
-  process.stdout.write('\ntemplates (lookup order: project → user → package):\n')
-  const userTemplateDir = join(getUserConfigDir(), 'templates')
+  process.stdout.write('\ntemplates (lookup order: project → package):\n')
   const packageTemplateDir = join(getPackageRoot(), 'batteries', 'templates')
   try {
-    const projectRoot = findProjectDir()
     const projTmplDir = getProjectTemplatesDir(projectRoot)
     process.stdout.write(`  project:  ${projTmplDir} ${existsSync(projTmplDir) ? '(exists)' : '(not found)'}\n`)
   } catch {
     process.stdout.write('  project:  (no project)\n')
   }
-  process.stdout.write(`  user:     ${userTemplateDir} ${existsSync(userTemplateDir) ? '(exists)' : '(not found)'}\n`)
   process.stdout.write(`  package:  ${packageTemplateDir} ${existsSync(packageTemplateDir) ? '(exists)' : '(not found)'}\n`)
-}
-
-function showField(
-  name: string,
-  resolved: unknown,
-  userVal: unknown,
-  projectVal: unknown,
-  defaultVal: unknown,
-): void {
-  const provenance = getProvenance(resolved, userVal, projectVal, defaultVal)
-  const displayVal = resolved === null ? 'null' : resolved === undefined ? '(not set)' : String(resolved)
-  process.stdout.write(`${name}: ${displayVal}  (${provenance})\n`)
-}
-
-function getProvenance(
-  resolved: unknown,
-  userVal: unknown,
-  projectVal: unknown,
-  defaultVal: unknown,
-): Provenance {
-  if (projectVal !== undefined) return 'project'
-  if (userVal !== undefined) return 'user'
-  if (resolved === defaultVal) return 'default'
-  return 'default'
-}
-
-function loadYamlFile(filePath: string): WmConfig | null {
-  if (!existsSync(filePath)) return null
-  try {
-    const raw = readFileSync(filePath, 'utf-8')
-    const parsed = jsYaml.load(raw, { schema: jsYaml.CORE_SCHEMA }) as WmConfig | null
-    if (!parsed || typeof parsed !== 'object') return null
-    return parsed
-  } catch {
-    return null
-  }
 }

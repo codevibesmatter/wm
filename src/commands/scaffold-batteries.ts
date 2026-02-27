@@ -1,8 +1,10 @@
-// scaffold-batteries.ts — copy batteries-included content to a project or user config dir
+// scaffold-batteries.ts — copy batteries-included content to a project
 // Called by `kata setup --batteries` after base setup completes.
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { getPackageRoot, getUserConfigDir, getProjectTemplatesDir, getProjectInterviewsPath, getProjectSubphasePatternsPath, getProjectVerificationToolsPath } from '../session/lookup.js'
+import { dirname } from 'node:path'
+import { getPackageRoot, getProjectTemplatesDir, getProjectInterviewsPath, getProjectSubphasePatternsPath, getProjectVerificationToolsPath } from '../session/lookup.js'
+import { getKataConfigPath } from '../config/kata-config.js'
 
 export interface BatteriesResult {
   templates: string[]
@@ -12,6 +14,7 @@ export interface BatteriesResult {
   interviews: string[]
   subphasePatterns: string[]
   verificationTools: string[]
+  kataConfig: string[]
   skipped: string[]
   updated: string[]
 }
@@ -74,8 +77,28 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
     interviews: [],
     subphasePatterns: [],
     verificationTools: [],
+    kataConfig: [],
     skipped: [],
     updated: [],
+  }
+
+  // kata.yaml → project config dir
+  const kataYamlSrc = join(batteryRoot, 'kata.yaml')
+  const kataYamlDest = getKataConfigPath(projectRoot)
+  if (existsSync(kataYamlSrc)) {
+    if (existsSync(kataYamlDest)) {
+      if (update) {
+        copyFileSync(kataYamlSrc, kataYamlDest)
+        result.kataConfig.push('kata.yaml')
+        result.updated.push('kata.yaml')
+      } else {
+        result.skipped.push('kata.yaml')
+      }
+    } else {
+      mkdirSync(dirname(kataYamlDest), { recursive: true })
+      copyFileSync(kataYamlSrc, kataYamlDest)
+      result.kataConfig.push('kata.yaml')
+    }
   }
 
   // Mode templates → .kata/templates/ (or .claude/workflows/templates/ for old layout)
@@ -194,53 +217,3 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
   return result
 }
 
-export interface UserBatteriesResult {
-  templates: string[]
-  specTemplates: string[]
-  skipped: string[]
-  updated: string[]
-}
-
-/**
- * Scaffold batteries content into the user config directory (~/.config/kata/).
- * Only copies templates and spec-templates (not agents or GitHub templates,
- * which are project-specific).
- *
- * Path mapping:
- *   batteries/templates/      → ~/.config/kata/templates/
- *   batteries/spec-templates/ → ~/.config/kata/spec-templates/
- *
- * @param update - When true, overwrite existing files instead of skipping them
- */
-export function scaffoldUserBatteries(update = false): UserBatteriesResult {
-  const batteryRoot = join(getPackageRoot(), 'batteries')
-  const userDir = getUserConfigDir()
-  const result: UserBatteriesResult = {
-    templates: [],
-    specTemplates: [],
-    skipped: [],
-    updated: [],
-  }
-
-  // Mode templates → ~/.config/kata/templates/
-  copyDirectory(
-    join(batteryRoot, 'templates'),
-    join(userDir, 'templates'),
-    result.templates,
-    result.skipped,
-    result.updated,
-    update,
-  )
-
-  // Spec templates → ~/.config/kata/spec-templates/
-  copyDirectory(
-    join(batteryRoot, 'spec-templates'),
-    join(userDir, 'spec-templates'),
-    result.specTemplates,
-    result.skipped,
-    result.updated,
-    update,
-  )
-
-  return result
-}

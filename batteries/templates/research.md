@@ -204,7 +204,7 @@ phases:
       - id: create-research-doc
         title: "Write research findings document"
         instruction: |
-          Read `research_path` from `.claude/workflows/wm.yaml` (default: `planning/research`).
+          Read `research_path` from kata.yaml (default: `planning/research`).
           Create persistent findings doc at:
           `{research_path}/{YYYY-MM-DD}-{slug}.md`
 
@@ -303,7 +303,7 @@ P5: Present (required)     → share results + decide next step
 
 ## Output
 
-- Research doc: `{research_path}/{date}-{slug}.md` (configurable in wm.yaml)
+- Research doc: `{research_path}/{date}-{slug}.md` (configurable in kata.yaml)
 - Structured findings with sources
 - Ranked recommendations
 - Next steps (none, planning, more research)

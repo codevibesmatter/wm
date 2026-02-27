@@ -1,5 +1,5 @@
 // kata modes — list available modes with entry commands
-import { loadModesConfig } from '../config/cache.js'
+import { loadKataConfig } from '../config/kata-config.js'
 
 /**
  * kata modes
@@ -8,7 +8,7 @@ import { loadModesConfig } from '../config/cache.js'
  * Used by the UserPromptSubmit hook when no mode is active.
  */
 export async function modes(_args: string[]): Promise<void> {
-  const config = await loadModesConfig()
+  const config = loadKataConfig()
 
   const lines: string[] = []
   lines.push('**Pick the mode that matches the user intent, then enter it before responding:**')
