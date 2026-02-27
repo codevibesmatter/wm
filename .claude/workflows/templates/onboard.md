@@ -287,7 +287,9 @@ Then run `kata doctor` (p6) to verify everything is correct.
 
 ## External Review Setup
 
-When p3 asks "Enable code review? Which reviewer?", first run `kata providers list` to detect which CLIs are installed:
+The built-in `review-agent` always runs during review steps. External providers run **alongside** it in parallel — all reviews print together.
+
+When p3 asks "Enable code review?", first run `kata providers list` to detect which CLIs are installed:
 
 ```bash
 kata providers list
@@ -297,14 +299,13 @@ Only offer providers whose CLI is detected. Then ask:
 
 ```
 AskUserQuestion(questions=[{
-  question: "Which agent providers do you want to configure?",
-  header: "Providers",
+  question: "Add external reviewers to run alongside the built-in review-agent?",
+  header: "Reviewers",
   options: [
-    {label: "Claude only", description: "Default — uses Claude Code agent SDK"},
-    {label: "Claude + Gemini", description: "Add Google Gemini CLI as reviewer/judge"},
-    {label: "Claude + Codex", description: "Add OpenAI Codex CLI as reviewer/judge"},
-    {label: "All three", description: "Claude + Gemini + Codex"},
-    {label: "Skip provider setup", description: "Configure later with: kata providers setup"}
+    {label: "Built-in only", description: "review-agent runs alone — no external providers"},
+    {label: "Add Gemini", description: "Gemini CLI runs in parallel with review-agent, both results printed together"},
+    {label: "Add Codex", description: "Codex CLI runs in parallel with review-agent, both results printed together"},
+    {label: "Add both", description: "Gemini + Codex + review-agent all run in parallel — three reviews printed together"}
   ],
   multiSelect: false
 }])
