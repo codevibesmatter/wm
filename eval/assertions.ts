@@ -724,6 +724,25 @@ export function implTaskGenPresets(): EvalCheckpoint[] {
   ]
 }
 
+/**
+ * Assert that review-agent was actually spawned during the session.
+ * Checks transcript for subagent_type="review-agent" Task invocation.
+ */
+export function assertReviewAgentRan(): EvalCheckpoint {
+  return assertTranscriptContains('review-agent', 'review-agent spawned in transcript')
+}
+
+/**
+ * Preset for impl-test-review scenarios with active review-agent execution.
+ * Extends implTaskGenPresets with transcript check for review-agent invocation.
+ */
+export function implReviewAgentsPresets(): EvalCheckpoint[] {
+  return [
+    ...implTaskGenPresets(),
+    assertReviewAgentRan(),
+  ]
+}
+
 // ─── Stop Hook Assertions ────────────────────────────────────────────────────
 
 interface StopHookLogEntry {
