@@ -253,7 +253,13 @@ If a build or test fails:
 
 Each REVIEW sub-phase runs reviewers sequentially and prints all results:
 
-**Step 1 — Always spawn review-agent:**
+**Step 1 — Read kata.yaml to discover external reviewers (do this FIRST):**
+```bash
+cat .kata/kata.yaml 2>/dev/null || cat .claude/workflows/kata.yaml
+```
+Note: `reviews.code_review` (true/false) and `reviews.code_reviewers` list.
+
+**Step 2 — Always spawn review-agent:**
 ```
 Task(subagent_type="review-agent", prompt="
   Review changes for {phase}. Check diff against spec.
@@ -261,13 +267,12 @@ Task(subagent_type="review-agent", prompt="
 ")
 ```
 
-**Step 2 — Run external providers (if configured):**
-Read `kata.yaml` reviews section. For each provider in `code_reviewers` (or `code_reviewer`
-if using the singular form), run one at a time:
+**Step 3 — Run each external provider:**
+If `code_review: true` and `code_reviewers` is non-empty, run each in sequence:
 ```bash
 kata review --prompt=code-review --provider=<name>
 ```
-Skip this step if `code_review: false` or no reviewers are configured.
+If no `code_reviewers` configured, skip this step.
 
 Print all review results together before marking the REVIEW task complete.
 
