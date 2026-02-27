@@ -17,23 +17,9 @@ subphase_patterns:
         instruction: |
           ⛔ DO NOT implement this phase yourself. SPAWN an impl-agent.
 
-          Task(subagent_type="general-purpose", prompt="
-            ROLE: Implementation Agent
+          Task(subagent_type="impl-agent", prompt="
             SPEC PHASE: {phase_name}
             TASK: {task_summary}
-
-            Read the spec section for this phase IN FULL.
-            Implement exactly what the spec describes:
-            - Follow existing code patterns (search for similar implementations first)
-            - Write tests alongside code if test infrastructure exists
-            - Run the project's build/typecheck command after changes
-
-            RETURN:
-            - Files changed (with paths)
-            - Test files written (if any)
-            - Build/typecheck result
-            - Any blockers or open questions
-
             Do NOT complete tasks — return results to orchestrator.
           ")
 
@@ -50,7 +36,16 @@ subphase_patterns:
         active_form: "Testing {phase_name}"
         labels: [test]
         depends_on_previous: true
-        instruction: "Run check-phase for {phase_name}: kata check-phase {phase_label} --issue={issue}"
+        instruction: |
+          If the spec phase has `test_cases:` and tests don't exist yet, spawn test-agent first:
+          Task(subagent_type="test-agent", prompt="
+            SPEC PHASE: {phase_name}
+            Write tests for any spec test_cases not yet covered.
+            Return: test files written, pass/fail results.
+          ")
+
+          Then run the process gate:
+          kata check-phase {phase_label} --issue={issue}
       - id_suffix: verify
         title_template: "VERIFY - {phase_name}"
         todo_template: "Verify {phase_name} against real services"
@@ -81,23 +76,9 @@ subphase_patterns:
         instruction: |
           ⛔ DO NOT implement this phase yourself. SPAWN an impl-agent.
 
-          Task(subagent_type="general-purpose", prompt="
-            ROLE: Implementation Agent
+          Task(subagent_type="impl-agent", prompt="
             SPEC PHASE: {phase_name}
             TASK: {task_summary}
-
-            Read the spec section for this phase IN FULL.
-            Implement exactly what the spec describes:
-            - Follow existing code patterns (search for similar implementations first)
-            - Write tests alongside code if test infrastructure exists
-            - Run the project's build/typecheck command after changes
-
-            RETURN:
-            - Files changed (with paths)
-            - Test files written (if any)
-            - Build/typecheck result
-            - Any blockers or open questions
-
             Do NOT complete tasks — return results to orchestrator.
           ")
 
@@ -114,7 +95,16 @@ subphase_patterns:
         active_form: "Testing {phase_name}"
         labels: [test]
         depends_on_previous: true
-        instruction: "Run check-phase for {phase_name}: kata check-phase {phase_label} --issue={issue}"
+        instruction: |
+          If the spec phase has `test_cases:` and tests don't exist yet, spawn test-agent first:
+          Task(subagent_type="test-agent", prompt="
+            SPEC PHASE: {phase_name}
+            Write tests for any spec test_cases not yet covered.
+            Return: test files written, pass/fail results.
+          ")
+
+          Then run the process gate:
+          kata check-phase {phase_label} --issue={issue}
 
   impl-test-review:
     description: "Implement, run process gates, then lightweight code review via provider"
@@ -127,23 +117,9 @@ subphase_patterns:
         instruction: |
           ⛔ DO NOT implement this phase yourself. SPAWN an impl-agent.
 
-          Task(subagent_type="general-purpose", prompt="
-            ROLE: Implementation Agent
+          Task(subagent_type="impl-agent", prompt="
             SPEC PHASE: {phase_name}
             TASK: {task_summary}
-
-            Read the spec section for this phase IN FULL.
-            Implement exactly what the spec describes:
-            - Follow existing code patterns (search for similar implementations first)
-            - Write tests alongside code if test infrastructure exists
-            - Run the project's build/typecheck command after changes
-
-            RETURN:
-            - Files changed (with paths)
-            - Test files written (if any)
-            - Build/typecheck result
-            - Any blockers or open questions
-
             Do NOT complete tasks — return results to orchestrator.
           ")
 
@@ -160,13 +136,30 @@ subphase_patterns:
         active_form: "Testing {phase_name}"
         labels: [test]
         depends_on_previous: true
-        instruction: "Run check-phase for {phase_name}: kata check-phase {phase_label} --issue={issue}"
+        instruction: |
+          If the spec phase has `test_cases:` and tests don't exist yet, spawn test-agent first:
+          Task(subagent_type="test-agent", prompt="
+            SPEC PHASE: {phase_name}
+            Write tests for any spec test_cases not yet covered.
+            Return: test files written, pass/fail results.
+          ")
+
+          Then run the process gate:
+          kata check-phase {phase_label} --issue={issue}
       - id_suffix: review
         title_template: "REVIEW - {phase_name}"
         todo_template: "Review {phase_name} changes"
         active_form: "Reviewing {phase_name}"
         labels: [review]
         depends_on_previous: true
+        instruction: |
+          Run provider-based review if configured (task description has a `kata review` command).
+          If no external provider is configured, spawn review-agent directly:
+          Task(subagent_type="review-agent", prompt="
+            Review the changes for {phase_name}.
+            Check the diff against the spec for correctness, edge cases, and quality.
+            Return: review verdict (APPROVE / REQUEST CHANGES) with file:line issues.
+          ")
         agent:
           provider: claude
           prompt: code-review
@@ -184,23 +177,9 @@ subphase_patterns:
         instruction: |
           ⛔ DO NOT implement this phase yourself. SPAWN an impl-agent.
 
-          Task(subagent_type="general-purpose", prompt="
-            ROLE: Implementation Agent
+          Task(subagent_type="impl-agent", prompt="
             SPEC PHASE: {phase_name}
             TASK: {task_summary}
-
-            Read the spec section for this phase IN FULL.
-            Implement exactly what the spec describes:
-            - Follow existing code patterns (search for similar implementations first)
-            - Write tests alongside code if test infrastructure exists
-            - Run the project's build/typecheck command after changes
-
-            RETURN:
-            - Files changed (with paths)
-            - Test files written (if any)
-            - Build/typecheck result
-            - Any blockers or open questions
-
             Do NOT complete tasks — return results to orchestrator.
           ")
 
@@ -217,4 +196,13 @@ subphase_patterns:
         active_form: "Checking {phase_name}"
         labels: [check]
         depends_on_previous: true
-        instruction: "Run check-phase for {phase_name}: kata check-phase {phase_label} --issue={issue}"
+        instruction: |
+          If the spec phase has `test_cases:` and tests don't exist yet, spawn test-agent first:
+          Task(subagent_type="test-agent", prompt="
+            SPEC PHASE: {phase_name}
+            Write tests for any spec test_cases not yet covered.
+            Return: test files written, pass/fail results.
+          ")
+
+          Then run the process gate:
+          kata check-phase {phase_label} --issue={issue}

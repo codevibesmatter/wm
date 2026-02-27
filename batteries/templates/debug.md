@@ -111,7 +111,7 @@ phases:
         instruction: |
           Spawn a debug-focused agent to trace the execution:
 
-          Task(subagent_type="debug-agent", prompt="
+          Task(subagent_type="Explore", prompt="
             Trace the code path for this bug:
             Symptom: {exact error or behavior}
             Hypothesis: {your #1 hypothesis}
@@ -264,7 +264,7 @@ P0: Reproduce & Map
 
 P1: Investigate
     ├── Form 3 hypotheses (ranked)
-    ├── Trace code path (debug-agent)
+    ├── Trace code path (Explore agent)
     └── Confirm root cause
 
 P2: Fix

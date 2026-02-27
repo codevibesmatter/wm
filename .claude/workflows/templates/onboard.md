@@ -12,7 +12,7 @@ phases:
     tasks:
       - "Verify Node.js >= 18 is installed"
       - "Create .claude/ directory if it does not exist"
-      - "Check if wm is already configured (wm.yaml exists)"
+      - "Check if kata is already configured (kata.yaml exists)"
   - id: p1
     name: "Setup Style"
     description: "Ask batteries-included vs custom — first question, determines the rest"
@@ -42,12 +42,12 @@ phases:
     tasks:
       - "AskUserQuestion: Enable spec review before implementation? (default: no)"
       - "AskUserQuestion: Enable code review? If yes, which external reviewer? (codex/gemini/none — see ## External Review Setup below)"
-      - "AskUserQuestion: Does this project use browser automation for testing? (Playwright/Cypress/Puppeteer/none)"
-      - "AskUserQuestion: Behavioral verify command? e.g. 'playwright test', 'cypress run', or custom script. Leave blank for none."
+      - "AskUserQuestion: Testing & verification toolchain (see ## Testing & Verification Setup below)"
       - "AskUserQuestion: Spec files path? (default: planning/specs)"
       - "AskUserQuestion: Research files path? (default: planning/research)"
       - "AskUserQuestion: Session retention days? (default: 7)"
       - "AskUserQuestion: Install strict mode hooks (PreToolUse gates)? (default: no)"
+      - "AskUserQuestion: Customize planning interview categories? (see ## Interview Customization below)"
   - id: p4
     name: "GitHub Setup"
     description: "Verify gh CLI is installed and authenticated"
@@ -61,13 +61,13 @@ phases:
       - "If batteries was chosen: create all 15 labels from .github/wm-labels.json via gh label create --force (see ## GitHub Setup Phase for exact commands)"
   - id: p5
     name: "Write Configuration"
-    description: "Run the appropriate kata setup command based on collected answers, then patch wm.yaml for any custom values"
+    description: "Run the appropriate kata setup command based on collected answers, then patch kata.yaml for any custom values"
     task_config:
-      title: "P5: Write Configuration — run setup command, patch wm.yaml"
+      title: "P5: Write Configuration — run setup command, patch kata.yaml"
       depends_on: [p4]
     tasks:
       - "Run the appropriate kata setup command (see ## Write Configuration Command below)"
-      - "If custom path: patch .claude/workflows/wm.yaml with any values that differ from auto-detected defaults"
+      - "If custom path: patch kata.yaml with any values that differ from auto-detected defaults"
       - "Confirm hooks registered in .claude/settings.json"
   - id: p6
     name: "Verify Setup"
@@ -93,14 +93,15 @@ You are the agent running the kata setup interview. Ask questions, collect answe
 ## What Gets Created
 
 **Always:**
-- `.claude/workflows/wm.yaml` — Project configuration
+- `kata.yaml` — Project configuration (at `.kata/kata.yaml` or `.claude/workflows/kata.yaml`)
 - `.claude/settings.json` — Hook registrations (merged with existing)
 - `.claude/sessions/` — Session state directory
 
 **With batteries:**
 - `.claude/workflows/templates/` — 6 full mode templates with GitHub integration
-- `.claude/agents/` — 5 Claude Code sub-agent definitions
+- `.claude/agents/` — 3 Claude Code sub-agent definitions
 - `planning/spec-templates/` — Feature, epic, and bug spec templates
+- `.kata/interviews.yaml` — Planning interview categories (customizable)
 
 ## Batteries-Included Starter Content
 
@@ -119,20 +120,18 @@ When asked "Install batteries-included starter content?", choosing Yes scaffolds
 **Agents** (`.claude/agents/`):
 | Agent | Description |
 |-------|-------------|
-| `spec-writer` | Writes and reviews feature specs |
 | `impl-agent` | Implements a specific spec phase |
 | `test-agent` | Writes tests for spec behaviors |
-| `debug-agent` | Traces bugs to root cause (read-only) |
 | `review-agent` | Reviews code and specs for quality |
 
-Agents are invoked with Claude Code's Task tool:
+Agents are invoked via subphase patterns. The orchestrator spawns them with Claude Code's Task tool:
 ```
 Task(subagent_type="impl-agent", prompt="
-  Implement phase P2.1 from planning/specs/123-feature.md
-  Return: files changed, verification result
+  SPEC PHASE: P2.1
+  TASK: Implement auth middleware from planning/specs/123-feature.md
+  Do NOT complete tasks — return results to orchestrator.
 ")
 ```
-The orchestrator (main session) spawns agents for parallel or delegated work, then collects results via `TaskOutput(task_id=..., block=true)`.
 
 **Spec templates** (`planning/spec-templates/`):
 - `feature.md` — Feature spec with behaviors, phases, acceptance criteria
@@ -218,7 +217,7 @@ AskUserQuestion(questions=[{
   options: [
     {
       label: "Quick — batteries-included (recommended)",
-      description: "Installs everything with sensible defaults: 6 mode templates, 5 agents, 3 spec templates. Just confirm your project name and go."
+      description: "Installs everything with sensible defaults: 6 mode templates, 3 agents, 3 spec templates. Just confirm your project name and go."
     },
     {
       label: "Custom — answer each question",
@@ -232,6 +231,41 @@ AskUserQuestion(questions=[{
 **If Quick:** skip p2 and p3. Just confirm the project name, then proceed to p4 (GitHub Setup). Use all defaults. Set batteries = true.
 
 **If Custom:** continue through p2 (Project Discovery) and p3 (Custom Configuration). At the end of p3, ask the batteries question to decide whether to install starter content.
+
+## Interview Customization
+
+In p3 (custom path only), ask about planning interview categories:
+
+```
+AskUserQuestion(questions=[{
+  question: "Which interview categories should planning mode use for this project?",
+  header: "Categories",
+  options: [
+    {label: "Requirements", description: "User journey, happy path, scope, edge cases, scale"},
+    {label: "Architecture", description: "Integration points, error handling, performance"},
+    {label: "Testing", description: "Test scenarios, error paths, test types"}
+  ],
+  multiSelect: true
+}])
+```
+
+Then ask about UI design separately:
+
+```
+AskUserQuestion(questions=[{
+  question: "Does this project have a UI? (enables design interview category)",
+  header: "UI Design",
+  options: [
+    {label: "Yes — include design interviews", description: "Layout, components, visual states"},
+    {label: "No — backend only", description: "Skip design category entirely"}
+  ],
+  multiSelect: false
+}])
+```
+
+**If all defaults kept:** No action needed — `batteries/interviews.yaml` has all 4 categories.
+
+**If user deselected categories:** Write a custom `.kata/interviews.yaml` (or `.claude/workflows/interviews.yaml` for old layout) containing only the selected categories. Copy the selected category definitions from the batteries file.
 
 ## Write Configuration Command
 
@@ -247,67 +281,195 @@ After collecting answers through the interview, run **one** of these commands in
 `--batteries` scaffolds mode templates, agents, spec templates, and GitHub issue templates.
 `--strict` installs the three `PreToolUse` hooks (mode-gate, task-deps, task-evidence).
 
-**Custom path only:** after running the command above, open `.claude/workflows/wm.yaml` and patch any values the user overrode during the interview (spec_path, research_path, test_command, verify_command, reviews, session_retention_days). The `kata setup --yes` command auto-detects sensible defaults; only write fields that differ.
+**Custom path only:** after running the command above, open `kata.yaml` and patch any values the user overrode during the interview (spec_path, research_path, project.test_command, project.build_command, project.typecheck_command, project.dev_server_command, project.dev_server_health, reviews, session_retention_days). The `kata setup --yes` command auto-detects sensible defaults; only write fields that differ.
 
 Then run `kata doctor` (p6) to verify everything is correct.
 
 ## External Review Setup
 
-When p3 asks "Enable code review? Which reviewer?":
+When p3 asks "Enable code review? Which reviewer?", first run `kata providers list` to detect which CLIs are installed:
 
-### `codex` — Claude Code sub-agent review
-Uses the batteries `review-agent` sub-agent (no external tool needed). The orchestrator spawns a `review-agent` after each implementation phase:
+```bash
+kata providers list
 ```
-Task(subagent_type="review-agent", prompt="Review git diff for phase P2.1 of spec planning/specs/123-*.md")
+
+Only offer providers whose CLI is detected. Then ask:
+
 ```
-Set in `wm.yaml`:
-```yaml
-reviews:
-  code_reviewer: codex
+AskUserQuestion(questions=[{
+  question: "Which agent providers do you want to configure?",
+  header: "Providers",
+  options: [
+    {label: "Claude only", description: "Default — uses Claude Code agent SDK"},
+    {label: "Claude + Gemini", description: "Add Google Gemini CLI as reviewer/judge"},
+    {label: "Claude + Codex", description: "Add OpenAI Codex CLI as reviewer/judge"},
+    {label: "All three", description: "Claude + Gemini + Codex"},
+    {label: "Skip provider setup", description: "Configure later with: kata providers setup"}
+  ],
+  multiSelect: false
+}])
 ```
+
+After selection, run `kata providers setup` to write config to kata.yaml.
+
+### `codex` — OpenAI Codex CLI review
+Requires the Codex CLI installed:
+```bash
+npm install -g @openai/codex
+```
+Uses `codex exec --sandbox read-only` for code review with full agent capabilities.
 
 ### `gemini` — Google Gemini CLI review
 Requires the Gemini CLI installed and authenticated:
 ```bash
-npm install -g @google/gemini-cli   # or pip install gemini-cli
+npm install -g @google/gemini-cli
 gemini auth login
 ```
-Then set in `wm.yaml`:
-```yaml
-reviews:
-  code_reviewer: gemini
-```
-The implementation template will prompt you to run `gemini review` after each phase.
+Uses `gemini --yolo` for autonomous code review with full agent capabilities.
 
 ### `none` — No external review gate
 Implementation phases complete without a review step. Recommended for solo projects or when using PR review instead.
 
-## Browser Automation Setup
+## Testing & Verification Setup
 
-When p3 asks about browser automation:
+When p3 reaches the testing & verification toolchain question, walk through each tool category. Auto-detect values from the project and ask the user to confirm or override.
 
-### Playwright
-```bash
-npm install -D @playwright/test
-npx playwright install
+### 1. Build Command
+
+Auto-detect from `package.json` scripts (look for `build`, `compile`, or `tsc`):
+
 ```
-Set verify command in `wm.yaml`:
+AskUserQuestion(questions=[{
+  question: "Build command? (detected: '{detected_or_none}')",
+  header: "Build",
+  options: [
+    {label: "Accept detected", description: "Use '{detected_command}'"},
+    {label: "None — no build step", description: "Project runs without compilation"},
+    {label: "Custom", description: "Specify a different build command"}
+  ],
+  multiSelect: false
+}])
+```
+
+Set in `kata.yaml`:
 ```yaml
-verify_command: "npx playwright test"
+project:
+  build_command: "npm run build"
 ```
 
-### Cypress
-```bash
-npm install -D cypress
+### 2. Type-check Command
+
+Auto-detect: check for `tsconfig.json` (→ `npx tsc --noEmit`), `pyright`, `mypy`, or `flow`:
+
 ```
+AskUserQuestion(questions=[{
+  question: "Type-check command? (detected: '{detected_or_none}')",
+  header: "Typecheck",
+  options: [
+    {label: "Accept detected", description: "Use '{detected_command}'"},
+    {label: "None — no type checking", description: "Skip type-check stop condition"},
+    {label: "Custom", description: "Specify a different type-check command"}
+  ],
+  multiSelect: false
+}])
+```
+
+Set in `kata.yaml`:
 ```yaml
-verify_command: "npx cypress run"
+project:
+  typecheck_command: "npx tsc --noEmit"
 ```
 
-### Custom script
-Any shell command that exits 0 on pass. The command is called by the VERIFY subphase in implementation mode and its output is written to `.claude/verification-evidence/{issue}.json`.
+### 3. Test Command
 
-If your project has no browser automation, leave `verify_command` unset — implementation mode will skip the verification gate.
+Already asked in p2 (Project Discovery). If p2 was skipped (quick path), auto-detect from `package.json` scripts.test, vitest/jest/pytest config files.
+
+Set in `kata.yaml`:
+```yaml
+project:
+  test_command: "npm test"
+```
+
+### 4. Dev Server (for behavioral verification)
+
+Ask whether the project has a dev server. This is used by the verification agent to start the app and run Verification Plan steps against it.
+
+```
+AskUserQuestion(questions=[{
+  question: "Does this project have a dev server?",
+  header: "Dev server",
+  options: [
+    {label: "Yes", description: "I'll ask for the start command and health endpoint next"},
+    {label: "No — CLI/library only", description: "Skip dev server setup"}
+  ],
+  multiSelect: false
+}])
+```
+
+If yes, ask two follow-ups:
+
+```
+AskUserQuestion(questions=[
+  {
+    question: "Dev server start command?",
+    header: "Start cmd",
+    options: [
+      {label: "npm run dev", description: "Standard npm dev script"},
+      {label: "pnpm dev", description: "pnpm dev script"},
+      {label: "Custom", description: "Specify a different command"}
+    ],
+    multiSelect: false
+  },
+  {
+    question: "Health/readiness endpoint to poll before running verification?",
+    header: "Health URL",
+    options: [
+      {label: "http://localhost:3000/health", description: "Common default"},
+      {label: "http://localhost:3000", description: "Just check the root responds"},
+      {label: "Custom", description: "Specify a different URL"}
+    ],
+    multiSelect: false
+  }
+])
+```
+
+Set in `kata.yaml`:
+```yaml
+project:
+  dev_server_command: "npm run dev"
+  dev_server_health: "http://localhost:3000/health"
+```
+
+### 5. Verification Tools File (batteries only)
+
+When batteries are installed, `verification-tools.md` is scaffolded with placeholder values. After setup, remind the user:
+
+> **Next step:** Fill in `verification-tools.md` with your project's dev server URL, auth setup, database access, and key endpoints. The verification agent reads this file before executing any Verification Plan.
+
+The file lives at `.kata/verification-tools.md` (new layout) or `.claude/workflows/verification-tools.md` (old layout).
+
+### 6. Test File Pattern (optional)
+
+If the project uses a non-standard test file location, ask:
+
+```
+AskUserQuestion(questions=[{
+  question: "Test file pattern? (used by feature_tests_added stop condition)",
+  header: "Test pattern",
+  options: [
+    {label: "Default — co-located *.test.ts", description: "Tests next to source files"},
+    {label: "tests/ directory", description: "Separate tests/ folder"},
+    {label: "Custom", description: "Specify a glob pattern like 'src/**/*.spec.ts'"}
+  ],
+  multiSelect: false
+}])
+```
+
+Set in `kata.yaml`:
+```yaml
+project:
+  test_file_pattern: "src/**/*.test.ts"
+```
 
 ## Hooks Installed
 

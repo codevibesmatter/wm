@@ -169,7 +169,7 @@ You are in **implementation** mode. Execute the approved spec phase by phase.
 You are an **IMPLEMENTATION ORCHESTRATOR**. You coordinate agents to execute approved specs.
 
 **You DO:**
-- Spawn impl-agents for code work (Task tool with subagent_type="general-purpose")
+- Spawn impl-agents for code work (Task tool with subagent_type="impl-agent")
 - Run quality gates (TEST protocol, provider-based REVIEW)
 - Verify commits exist before closing tasks
 - Track progress via TaskUpdate
@@ -252,9 +252,14 @@ If a build or test fails:
 ## REVIEW Protocol
 
 Each REVIEW sub-phase runs an **external agent review** via the provider system.
-Do NOT do the review yourself — run the command from the task description.
-The task description contains a `kata review` command in a bash code block.
-Execute that command exactly as written.
+If the task description contains a `kata review` command, execute it exactly as written.
+If no external provider is configured, spawn review-agent directly:
+```
+Task(subagent_type="review-agent", prompt="
+  Review changes for {phase}. Check diff against spec.
+  Return: verdict (APPROVE / REQUEST CHANGES) with file:line issues.
+")
+```
 
 ## Standalone Verification
 
