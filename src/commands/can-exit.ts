@@ -372,6 +372,26 @@ function validateCanExit(
 
   const checks = new Set(stopConditions)
 
+  // If we're on the base branch with no diff, work is already merged — skip code checks
+  try {
+    const cfg = loadKataConfig()
+    const diffBase = cfg.project?.diff_base ?? 'origin/main'
+    const baseBranch = diffBase.replace(/^origin\//, '')
+    const currentBranch = execSync('git rev-parse --abbrev-ref HEAD 2>/dev/null || true', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim()
+    const hasDiff = execSync(`git diff --name-only "${diffBase}" 2>/dev/null || true`, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim()
+    if (currentBranch === baseBranch && !hasDiff) {
+      return { canExit: true, reasons: [], hasOpenTasks: false, usingTasks: false }
+    }
+  } catch {
+    // Continue with normal checks if git is unavailable
+  }
+
   // ── tasks_complete ──
   const pendingCount = checks.has('tasks_complete') ? countPendingNativeTasks(sessionId) : 0
   const hasOpenTasks = pendingCount > 0
