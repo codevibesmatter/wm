@@ -29,7 +29,6 @@ import { projects } from './commands/projects.js'
 import { config as configCommand } from './commands/config.js'
 import { modes } from './commands/modes.js'
 import { checkPhase } from './commands/check-phase.js'
-import { verifyRun } from './commands/verify-run.js'
 import { providers as providersCommand } from './commands/providers.js'
 import { review as reviewCommand } from './commands/review.js'
 import { existsSync, readFileSync } from 'node:fs'
@@ -161,7 +160,11 @@ async function main() {
         break
 
       case 'verify-run':
-        await verifyRun(commandArgs)
+        // Removed: verify-run used SDK nesting which caused silent failures.
+        // Use `kata enter verify` for standalone verification instead.
+        // biome-ignore lint/suspicious/noConsole: intentional CLI output
+        console.error('verify-run has been removed. Use `kata enter verify` for standalone verification.')
+        process.exitCode = 1
         break
 
       case 'providers':
@@ -225,7 +228,6 @@ Usage:
   kata init [--session=SESSION_ID] [--force]     Initialize session state
   kata prime [--session=ID] [--hook-json]        Output context injection block
   kata check-phase <phase-id> [--issue=N] [--force]   Run per-phase process gates
-  kata verify-run --issue=N [--verbose] [--dry-run]   Spawn fresh agent to execute VP steps
   kata validate-spec --issue=N | path.md         Validate spec phases format
   kata validate-template <path> [--json]         Validate a template file
   kata init-template <path> [options]            Create a new template file

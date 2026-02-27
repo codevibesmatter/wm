@@ -70,37 +70,6 @@ phases:
 
           Then: Mark this task completed via TaskUpdate
 
-      - id: write-verification-plan
-        title: "Write verification plan (optional — infer mode available)"
-        instruction: |
-          Decide how verification will run in P2. Two options:
-
-          **Option A: Infer mode (default, no plan file needed)**
-          Just run `kata verify-run --verbose` in P2. The verify agent will
-          infer what to check from the git diff and commit messages. This
-          covers build, tests, code review, and commit-intent matching.
-          Best for: chores, refactors, small fixes where the diff tells the story.
-
-          **Option B: Write a plan file (for task-specific checks)**
-          Write a `verify-plan.md` in the workflow directory with `### VPn:` steps.
-          Best for: when you need the verify agent to check something specific
-          that the diff alone won't reveal (e.g., runtime behavior, specific
-          output format, integration with external systems).
-
-          If writing a plan, create at the workflowDir path from `kata status`:
-          ```markdown
-          ### VP1: Build passes
-          Run the project build command and confirm zero errors.
-
-          ### VP2: Tests pass
-          Run the project test suite. All tests must pass.
-
-          ### VP3: {Task-specific check}
-          {Concrete step a fresh agent can execute without session context}
-          ```
-
-          Then: Mark this task completed via TaskUpdate
-
   - id: p1
     name: Implement
     task_config:
@@ -139,57 +108,11 @@ phases:
           Then: Mark this task completed via TaskUpdate
 
   - id: p2
-    name: Verify
-    task_config:
-      title: "P2: Verify - run verification plan via fresh agent"
-      labels: [orchestration, verify]
-      depends_on: [p1]
-    steps:
-      - id: run-verify
-        title: "Run kata verify-run"
-        instruction: |
-          Spawn a fresh verification agent. Choose based on your P0 decision:
-
-          **If you wrote a plan file:**
-          ```bash
-          kata verify-run --plan-file=<workflow-dir>/verify-plan.md --verbose
-          ```
-
-          **If using infer mode (no plan file):**
-          ```bash
-          kata verify-run --verbose
-          ```
-          This infers VP steps from git diff + commits (build, tests, code review,
-          commit-intent matching).
-
-          Both modes run a separate Claude agent with full tool access that:
-          1. Enters verify mode
-          2. Executes VP steps (explicit or inferred)
-          3. Fixes implementation if VP steps fail (repair loop, max 3 cycles)
-          4. Writes VP evidence JSON
-
-          **Interpreting results:**
-          - Exit 0: all VP steps passed — proceed to next phase
-          - Exit 1 with output: verification failed — review failures and fix
-          - Exit 1 with no output: spawn failure — see troubleshooting below
-
-          **Troubleshooting silent failures:**
-          If verify-run exits 1 with no output or evidence:
-          1. First try `--dry-run` to confirm the prompt is correct
-          2. Re-run with `--verbose` to see agent stderr
-          3. If still silent, try direct node invocation (bypasses shell wrapper):
-             `node <path-to-kata>/dist/index.js verify-run --verbose`
-          4. As last resort, use the Task tool to spawn a fresh agent that
-             executes the VP steps manually (same fresh-eyes principle)
-
-          Then: Mark this task completed via TaskUpdate
-
-  - id: p3
     name: Complete
     task_config:
-      title: "P3: Complete - final checks, commit, push, close issue"
-      labels: [phase, phase-3, complete]
-      depends_on: [p2]
+      title: "P2: Complete - final checks, commit, push, close issue"
+      labels: [phase, phase-2, complete]
+      depends_on: [p1]
     steps:
       - id: final-verification
         title: "Final verification"
@@ -227,7 +150,6 @@ phases:
 
 global_conditions:
   - changes_committed
-  - changes_pushed
 
 workflow_id_format: "TK-{session_last_4}-{MMDD}"
 ---
@@ -256,56 +178,24 @@ workflow_id_format: "TK-{session_last_4}-{MMDD}"
 P0: Plan (5-10 min)
     ├── Classify: chore / feature / fix
     ├── Quick context search (Explore agent)
-    ├── 3-5 line scope + approach
-    └── Decide verify strategy (infer or write VP)
+    └── 3-5 line scope + approach
 
 P1: Implement
     ├── Make minimal, focused changes
     └── Verify as you go (typecheck, tests)
 
-P2: Verify
-    └── kata verify-run — fresh agent verifies changes
-
-P3: Complete
+P2: Complete
     ├── Final checks
     ├── Commit + push
     └── Close GitHub issue (if any)
 ```
 
-## P2: Verification (kata verify-run)
+## Standalone Verification
 
-After implementation, P2 spawns a **fresh agent** to verify the changes.
-
-### Three modes
-
-**Infer (default — no plan file needed):**
+For thorough verification after task completion, run a separate verify session:
 ```bash
-kata verify-run --verbose
+kata enter verify
 ```
-Gathers git diff + commits, verifies build, tests, code correctness, and
-commit-intent matching. Best for most tasks.
-
-**Plan file (task-specific checks):**
-```bash
-kata verify-run --plan-file={workflow-dir}/verify-plan.md --verbose
-```
-When you need the agent to check something the diff won't reveal.
-
-**Issue (implementation mode):**
-```bash
-kata verify-run --issue=N --verbose
-```
-Extracts VP from the spec's `## Verification Plan` section.
-
-### Why a fresh agent?
-
-The implementing agent wrote the code. It has a mental model that may contain
-blind spots. A fresh agent catches issues that in-session checks miss.
-
-### After verify-run
-
-- Exit code 0 → all VP steps passed, proceed to P3 Complete
-- Exit code 1 → verification failed, review output and fix
 
 ## Key Principle
 

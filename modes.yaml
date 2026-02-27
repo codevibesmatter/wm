@@ -85,7 +85,6 @@ modes:
       - verification
       - tests_pass
       - feature_tests_added
-      - verification_plan_executed
     intent_keywords:
       - "implement"
       - "build"
@@ -124,8 +123,6 @@ modes:
     stop_conditions:
       - tasks_complete
       - committed
-      - pushed
-      - tests_pass
     intent_keywords:
       - "task:"
       - "chore"
@@ -201,9 +198,31 @@ modes:
     stop_conditions:
       - tasks_complete
       - verification_plan_executed
+    intent_keywords:
+      - "verify"
+      - "run verification"
+      - "execute VP"
+      - "verification plan"
+    strong_signals:
+      - "kata enter verify"
+      - "run verification plan"
+      - "verify the changes"
+      - "execute verification"
     template: "verify.md"
     workflow_prefix: "VF"
     category: system
+    behavior:
+      bias: "act"
+      entry_actions:
+        - check: "issue number provided"
+          then: "enter verify mode, read spec VP"
+        - check: "no issue, recent commits exist"
+          then: "enter verify mode, infer from git diff"
+      never_ask:
+        - question: "What should I verify?"
+          instead: "Infer from issue spec or git diff"
+      ok_to_ask:
+        - "No spec and no recent commits to verify"
 
   stop-hook-test:
     name: "Stop Hook Test"

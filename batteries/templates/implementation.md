@@ -1,7 +1,7 @@
 ---
 id: implementation
 name: "Feature Implementation"
-description: "Execute approved spec — claim branch, implement, test, verify, close with PR"
+description: "Execute approved spec — claim branch, implement, test, review, close with PR"
 mode: implementation
 phases:
   - id: p0
@@ -79,51 +79,14 @@ phases:
   - id: p2
     name: Implement
     container: true
-    subphase_pattern: impl-test
+    subphase_pattern: impl-test-review
 
   - id: p3
-    name: Verify
-    task_config:
-      title: "P3: Verify - run full Verification Plan via fresh agent"
-      labels: [orchestration, verify]
-      depends_on: [p2]
-    steps:
-      - id: run-verify
-        title: "Run kata verify-run"
-        instruction: |
-          Spawn a fresh verification agent to execute ALL VP steps from the spec:
-          ```bash
-          kata verify-run --issue={issue-number} --verbose
-          ```
-
-          This runs a separate Claude agent with full tool access that:
-          1. Enters verify mode
-          2. Executes every VP step from the spec
-          3. Fixes implementation if VP steps fail (repair loop, max 3 cycles)
-          4. Writes VP evidence JSON
-
-          **Interpreting results:**
-          - Exit 0: all VP steps passed — proceed to next phase
-          - Exit 1 with output: verification failed — review failures and fix
-          - Exit 1 with no output: spawn failure — see troubleshooting below
-
-          **Troubleshooting silent failures:**
-          If verify-run exits 1 with no output or evidence:
-          1. First try `--dry-run` to confirm the spec has valid VP steps
-          2. Re-run with `--verbose` to see agent stderr
-          3. If still silent, try direct node invocation (bypasses shell wrapper):
-             `node <path-to-kata>/dist/index.js verify-run --issue={N} --verbose`
-          4. As last resort, use the Task tool to spawn a fresh agent that
-             executes the VP steps manually (same fresh-eyes principle)
-
-          Then: Mark this task completed via TaskUpdate
-
-  - id: p4
     name: Close
     task_config:
-      title: "P4: Close - final checks, commit, PR, close issue"
+      title: "P3: Close - final checks, commit, PR, close issue"
       labels: [orchestration, close]
-      depends_on: [p3]
+      depends_on: [p2]
     steps:
       - id: final-checks
         title: "Run final checks"
@@ -221,12 +184,10 @@ P1: Claim
 
 P2: Implement (per-spec-phase)
     ├── IMPL: implement the phase tasks
-    └── TEST: run process gates (build, typecheck, tests)
+    ├── TEST: run process gates (build, typecheck, tests)
+    └── REVIEW: lightweight code review via provider
 
-P3: Verify (once, after all phases)
-    └── kata verify-run — fresh agent executes full VP
-
-P4: Close
+P3: Close
     ├── Final typecheck + tests
     ├── Commit + push
     ├── Create PR
@@ -294,38 +255,16 @@ If a build or test fails:
 - Maximum 3 fix attempts per failure before escalating to user
 - Never silence errors, skip tests, or weaken assertions to pass
 
-## P3: Full Verification (kata verify-run)
+## Standalone Verification
 
-After all implementation phases are complete, P3 spawns a **fresh agent**
-that executes the spec's entire Verification Plan against the real system.
-
+For full Verification Plan execution after implementation, run a separate verify session:
 ```bash
-kata verify-run --issue={N} --verbose
+kata enter verify --issue=N
 ```
-
-### Why a fresh agent?
-
-The implementing agent wrote the code AND the unit tests. It has a mental model
-that may contain blind spots. A fresh agent executing concrete VP steps against
-real services catches integration bugs that unit tests with mocks cannot.
-
-### What verify-run does
-
-1. Reads the spec's `## Verification Plan` section
-2. Parses all `### VPn:` steps into individual tasks
-3. Enters verify mode via `kata enter verify --issue=N`
-4. Executes each VP step literally (no modifications)
-5. If any step fails: diagnoses, fixes code, re-runs (max 3 cycles)
-6. Writes VP evidence JSON to `.kata/verification-evidence/`
-
-### After verify-run
-
-- Exit code 0 → all VP steps passed, proceed to P4 Close
-- Exit code 1 → verification failed, review output and fix
+This spawns a standalone mode with its own fix loop — no SDK nesting required.
 
 ## Stop Conditions
 
-- All spec phases implemented and tested
-- Verification Plan executed (VP evidence exists)
+- All spec phases implemented, tested, and reviewed
 - Changes committed and pushed
 - PR created (or explicitly skipped)
