@@ -34,17 +34,14 @@ export const implReviewAgentsScenario: EvalScenario = {
   templatePath: '.claude/workflows/templates/implementation.md',
   fixture: 'tanstack-start',
   fixtureSetup: [
-    // Enable all three reviewers: review-agent (always), gemini, codex
-    `python3 -c "
-import sys
-with open('.claude/workflows/kata.yaml', 'r') as f:
-    content = f.read()
-content = content.replace('code_review: false', 'code_review: true')
-content = content.replace('code_reviewer: null', 'code_reviewers: [gemini, codex]')
-with open('.claude/workflows/kata.yaml', 'w') as f:
-    f.write(content)
-print('kata.yaml patched: code_reviewers = [gemini, codex]')
-"`,
+    // kata batteries --update writes a fresh kata.yaml with reviews commented out.
+    // Uncomment the reviews block and set code_review: true + code_reviewers list.
+    "sed -i 's/^# reviews:/reviews:/' .claude/workflows/kata.yaml",
+    "sed -i 's/^#   code_review:.*$/  code_review: true/' .claude/workflows/kata.yaml",
+    "sed -i '/code_reviewer:/d' .claude/workflows/kata.yaml",
+    "sed -i '/^  code_review: true/a\\  code_reviewers:' .claude/workflows/kata.yaml",
+    "sed -i '/^  code_reviewers:/a\\    - codex' .claude/workflows/kata.yaml",
+    "sed -i '/^  code_reviewers:/a\\    - gemini' .claude/workflows/kata.yaml",
   ],
   prompt:
     'Implement the health endpoint feature from the approved spec at planning/specs/100-health-endpoint.md. ' +
