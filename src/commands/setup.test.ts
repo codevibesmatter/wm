@@ -52,18 +52,18 @@ describe('setup --yes', () => {
     }
   })
 
-  it('creates directories and wm.yaml with default profile', async () => {
+  it('creates directories and kata.yaml with default profile', async () => {
     const output = await captureSetup(['--yes'], tmpDir)
 
     // Check output indicates success
     expect(output).toContain('kata setup complete')
 
-    // Check wm.yaml was created
-    const wmYamlPath = join(tmpDir, '.claude', 'workflows', 'wm.yaml')
-    expect(existsSync(wmYamlPath)).toBe(true)
+    // Check kata.yaml was created
+    const kataYamlPath = join(tmpDir, '.claude', 'workflows', 'kata.yaml')
+    expect(existsSync(kataYamlPath)).toBe(true)
 
-    // Parse and verify wm.yaml content
-    const raw = readFileSync(wmYamlPath, 'utf-8')
+    // Parse and verify kata.yaml content
+    const raw = readFileSync(kataYamlPath, 'utf-8')
     const config = jsYaml.load(raw) as Record<string, unknown>
     expect(config).toBeDefined()
     expect(config.spec_path).toBe('planning/specs')
@@ -107,14 +107,14 @@ describe('setup --yes', () => {
     // First setup
     await captureSetup(['--yes'], tmpDir)
 
-    const wmYamlPath = join(tmpDir, '.claude', 'workflows', 'wm.yaml')
-    const firstContent = readFileSync(wmYamlPath, 'utf-8')
+    const kataYamlPath = join(tmpDir, '.claude', 'workflows', 'kata.yaml')
+    const firstContent = readFileSync(kataYamlPath, 'utf-8')
 
     // Second setup
     await captureSetup(['--yes'], tmpDir)
 
-    const secondContent = readFileSync(wmYamlPath, 'utf-8')
-    // Content should be the same (or updated wm_version only)
+    const secondContent = readFileSync(kataYamlPath, 'utf-8')
+    // Content should be the same (existing kata.yaml fields win)
     const firstConfig = jsYaml.load(firstContent) as Record<string, unknown>
     const secondConfig = jsYaml.load(secondContent) as Record<string, unknown>
     expect(secondConfig.spec_path).toBe(firstConfig.spec_path)
@@ -210,7 +210,7 @@ describe('onboard template', () => {
     }>(templatePath)
 
     expect(frontmatter).not.toBeNull()
-    expect(frontmatter!.phases).toHaveLength(6)
+    expect(frontmatter!.phases).toHaveLength(7)
 
     // Verify phases have AskUserQuestion steps
     const allTasks = frontmatter!.phases.flatMap((p) => p.tasks || [])

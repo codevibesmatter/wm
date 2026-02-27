@@ -140,7 +140,7 @@ export const hookRegistration: HealthCheck = {
 
 /**
  * Check: config-validation
- * Validates wm.yaml and modes.yaml parse correctly.
+ * Validates kata.yaml parses correctly.
  */
 export const configValidation: HealthCheck = {
   id: 'config-validation',
@@ -149,26 +149,16 @@ export const configValidation: HealthCheck = {
 
   run(project) {
     const configDir = getConfigDir(project)
-    const wmYamlPath = join(configDir, 'wm.yaml')
+    const kataYamlPath = join(configDir, 'kata.yaml')
 
-    if (!existsSync(wmYamlPath)) {
-      return { status: 'error', message: 'wm.yaml not found' }
+    if (!existsSync(kataYamlPath)) {
+      return { status: 'error', message: 'kata.yaml not found' }
     }
 
     try {
-      jsYaml.load(readFileSync(wmYamlPath, 'utf-8'))
+      jsYaml.load(readFileSync(kataYamlPath, 'utf-8'))
     } catch (e) {
-      return { status: 'error', message: `wm.yaml parse error: ${e instanceof Error ? e.message : e}` }
-    }
-
-    // Check modes.yaml if present
-    const modesYamlPath = join(configDir, 'modes.yaml')
-    if (existsSync(modesYamlPath)) {
-      try {
-        jsYaml.load(readFileSync(modesYamlPath, 'utf-8'))
-      } catch (e) {
-        return { status: 'error', message: `modes.yaml parse error: ${e instanceof Error ? e.message : e}` }
-      }
+      return { status: 'error', message: `kata.yaml parse error: ${e instanceof Error ? e.message : e}` }
     }
 
     return { status: 'ok', message: 'config valid' }

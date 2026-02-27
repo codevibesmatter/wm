@@ -91,15 +91,15 @@ describe('configValidation', () => {
     rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  it('reports error when wm.yaml is missing', () => {
+  it('reports error when kata.yaml is missing', () => {
     const result = configValidation.run(makeProject(tmpDir))
     expect(result.status).toBe('error')
-    expect(result.message).toContain('wm.yaml not found')
+    expect(result.message).toContain('kata.yaml not found')
   })
 
-  it('reports ok for valid wm.yaml', () => {
+  it('reports ok for valid kata.yaml', () => {
     mkdirSync(join(tmpDir, '.kata'), { recursive: true })
-    writeFileSync(join(tmpDir, '.kata', 'wm.yaml'), 'project:\n  name: test\n')
+    writeFileSync(join(tmpDir, '.kata', 'kata.yaml'), 'project:\n  name: test\n')
 
     const result = configValidation.run(makeProject(tmpDir))
     expect(result.status).toBe('ok')
@@ -107,7 +107,7 @@ describe('configValidation', () => {
 
   it('reports error for invalid YAML', () => {
     mkdirSync(join(tmpDir, '.kata'), { recursive: true })
-    writeFileSync(join(tmpDir, '.kata', 'wm.yaml'), '{{invalid yaml')
+    writeFileSync(join(tmpDir, '.kata', 'kata.yaml'), '{{invalid yaml')
 
     const result = configValidation.run(makeProject(tmpDir))
     expect(result.status).toBe('error')

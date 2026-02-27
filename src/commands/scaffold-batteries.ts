@@ -2,7 +2,9 @@
 // Called by `kata setup --batteries` after base setup completes.
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { dirname } from 'node:path'
 import { getPackageRoot, getProjectTemplatesDir, getProjectInterviewsPath, getProjectSubphasePatternsPath, getProjectVerificationToolsPath } from '../session/lookup.js'
+import { getKataConfigPath } from '../config/kata-config.js'
 
 export interface BatteriesResult {
   templates: string[]
@@ -12,6 +14,7 @@ export interface BatteriesResult {
   interviews: string[]
   subphasePatterns: string[]
   verificationTools: string[]
+  kataConfig: string[]
   skipped: string[]
   updated: string[]
 }
@@ -74,8 +77,28 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
     interviews: [],
     subphasePatterns: [],
     verificationTools: [],
+    kataConfig: [],
     skipped: [],
     updated: [],
+  }
+
+  // kata.yaml → project config dir
+  const kataYamlSrc = join(batteryRoot, 'kata.yaml')
+  const kataYamlDest = getKataConfigPath(projectRoot)
+  if (existsSync(kataYamlSrc)) {
+    if (existsSync(kataYamlDest)) {
+      if (update) {
+        copyFileSync(kataYamlSrc, kataYamlDest)
+        result.kataConfig.push('kata.yaml')
+        result.updated.push('kata.yaml')
+      } else {
+        result.skipped.push('kata.yaml')
+      }
+    } else {
+      mkdirSync(dirname(kataYamlDest), { recursive: true })
+      copyFileSync(kataYamlSrc, kataYamlDest)
+      result.kataConfig.push('kata.yaml')
+    }
   }
 
   // Mode templates → .kata/templates/ (or .claude/workflows/templates/ for old layout)

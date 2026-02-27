@@ -4,7 +4,8 @@
 // Preserves .claude/sessions/ and all non-kata hooks
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
-import { findProjectDir, getProjectWmConfigPath, getProjectModesPath, getSessionsDir, getKataDir } from '../session/lookup.js'
+import { findProjectDir, getSessionsDir, getKataDir } from '../session/lookup.js'
+import { getKataConfigPath } from '../config/kata-config.js'
 
 /**
  * Parse command line arguments for teardown command
@@ -147,18 +148,11 @@ export async function teardown(args: string[]): Promise<void> {
     }
   }
 
-  // 2. Check for wm.yaml
-  const wmYamlPath = getProjectWmConfigPath(projectRoot)
-  if (existsSync(wmYamlPath)) {
+  // 2. Check for kata.yaml
+  const kataYamlPath = getKataConfigPath(projectRoot)
+  if (existsSync(kataYamlPath)) {
     const kd = getKataDir(projectRoot)
-    actions.push(`Delete: ${kd === '.kata' ? '.kata/wm.yaml' : '.claude/workflows/wm.yaml'}`)
-  }
-
-  // 3. Check for modes.yaml (only with --all)
-  const modesYamlPath = getProjectModesPath(projectRoot)
-  if (parsed.all && existsSync(modesYamlPath)) {
-    const kd = getKataDir(projectRoot)
-    actions.push(`Delete: ${kd === '.kata' ? '.kata/modes.yaml' : '.claude/workflows/modes.yaml'}`)
+    actions.push(`Delete: ${kd === '.kata' ? '.kata/kata.yaml' : '.claude/workflows/kata.yaml'}`)
   }
 
   // No actions needed
@@ -192,14 +186,9 @@ export async function teardown(args: string[]): Promise<void> {
     writeFileSync(settingsPath, `${JSON.stringify(cleaned, null, 2)}\n`, 'utf-8')
   }
 
-  // 2. Delete wm.yaml
-  if (existsSync(wmYamlPath)) {
-    unlinkSync(wmYamlPath)
-  }
-
-  // 3. Delete modes.yaml (only with --all)
-  if (parsed.all && existsSync(modesYamlPath)) {
-    unlinkSync(modesYamlPath)
+  // 2. Delete kata.yaml
+  if (existsSync(kataYamlPath)) {
+    unlinkSync(kataYamlPath)
   }
 
   const kd = getKataDir(projectRoot)

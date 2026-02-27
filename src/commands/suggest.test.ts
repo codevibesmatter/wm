@@ -38,6 +38,31 @@ describe('suggest', () => {
     tmpDir = makeTmpDir()
     mkdirSync(join(tmpDir, '.claude', 'sessions'), { recursive: true })
     mkdirSync(join(tmpDir, '.claude', 'workflows'), { recursive: true })
+    // Write kata.yaml so loadKataConfig() finds it (no longer reads wm.yaml/modes.yaml)
+    // Include modes with intent_keywords so mode detection tests work
+    writeFileSync(
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      [
+        'spec_path: planning/specs',
+        'research_path: planning/research',
+        'modes:',
+        '  planning:',
+        '    template: planning.md',
+        '    intent_keywords: ["plan feature", "spec", "design", "write spec"]',
+        '  implementation:',
+        '    template: implementation.md',
+        '    intent_keywords: ["implement", "build", "code", "develop"]',
+        '    stop_conditions: []',
+        '  research:',
+        '    template: research.md',
+        '    intent_keywords: ["research", "explore", "learn about"]',
+        '    stop_conditions: []',
+        '  freeform:',
+        '    template: freeform.md',
+        '    stop_conditions: []',
+        '    aliases: ["qa"]',
+      ].join('\n') + '\n',
+    )
     process.env.CLAUDE_PROJECT_DIR = tmpDir
   })
 
@@ -96,10 +121,10 @@ describe('suggest', () => {
     expect(result.searchIntent!.type).toBe('specs')
   })
 
-  it('uses research_path from WmConfig for search commands', async () => {
-    // Write custom wm.yaml with custom research_path
-    const wmYamlPath = join(tmpDir, '.claude', 'workflows', 'wm.yaml')
-    writeFileSync(wmYamlPath, 'research_path: custom/research\nspec_path: custom/specs\n')
+  it('uses research_path from KataConfig for search commands', async () => {
+    // Write custom kata.yaml with custom research_path
+    const kataYamlPath = join(tmpDir, '.claude', 'workflows', 'kata.yaml')
+    writeFileSync(kataYamlPath, 'research_path: custom/research\nspec_path: custom/specs\n')
 
     const output = await captureSuggest(['find', 'research', 'about', 'api'])
     const result = JSON.parse(output) as {

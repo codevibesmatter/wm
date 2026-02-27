@@ -52,7 +52,8 @@ export async function batteries(args: string[]): Promise<void> {
     result.githubTemplates.length +
     result.interviews.length +
     result.subphasePatterns.length +
-    result.verificationTools.length
+    result.verificationTools.length +
+    result.kataConfig.length
   const updatedCount = result.updated.length
 
   // On --update, also refresh hook registrations in .claude/settings.json
@@ -84,6 +85,12 @@ export async function batteries(args: string[]): Promise<void> {
     process.stdout.write(`kata batteries: scaffolded ${newCount} files\n`)
   }
 
+  if (result.kataConfig.length > 0) {
+    const { getKataConfigPath } = await import('../config/kata-config.js')
+    const configPath = getKataConfigPath(projectRoot)
+    const relPath = configPath.replace(projectRoot + '/', '')
+    process.stdout.write(`\nConfig → ${relPath}\n`)
+  }
   if (result.templates.length > 0) {
     const { getKataDir } = await import('../session/lookup.js')
     const kd = getKataDir(projectRoot)

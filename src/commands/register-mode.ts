@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs'
 import { resolve, basename, join } from 'node:path'
 import jsYaml from 'js-yaml'
-import { findProjectDir, getProjectModesPath, getProjectTemplatesDir } from '../session/lookup.js'
+import { findProjectDir, getProjectTemplatesDir } from '../session/lookup.js'
+import { getKataConfigPath } from '../config/kata-config.js'
 import { validatePhases } from '../validation/index.js'
 import { VALID_CATEGORIES } from '../state/schema.js'
 
@@ -68,11 +69,11 @@ function showHelp(): void {
   console.log(`
 Usage: kata register-mode <template-path> [options]
 
-Register an existing template as a mode in modes.yaml.
+Register an existing template as a mode in kata.yaml.
 
 This command takes a template file and:
-  1. Optionally copies it to .claude/workflows/templates/ (with --copy)
-  2. Adds an entry to .claude/workflows/modes.yaml referencing the template
+  1. Optionally copies it to the project templates directory (with --copy)
+  2. Adds an entry to kata.yaml modes section referencing the template
 
 Arguments:
   <template-path>           Path to existing template file
@@ -224,8 +225,8 @@ export async function registerModeCommand(args: string[]): Promise<void> {
     process.exit(1)
   }
 
-  // Always write to project-level paths (npm installs have read-only package paths)
-  const modesYamlPath = getProjectModesPath(projectDir)
+  // Always write to project-level kata.yaml
+  const kataYamlPath = getKataConfigPath(projectDir)
   const templatesDir = getProjectTemplatesDir(projectDir)
 
   // Determine final template location
@@ -250,18 +251,18 @@ export async function registerModeCommand(args: string[]): Promise<void> {
   }
 
   // Check if mode already exists
-  if (existsSync(modesYamlPath)) {
-    const modesContent = readFileSync(modesYamlPath, 'utf-8')
-    const modesYaml = jsYaml.load(modesContent, { schema: jsYaml.CORE_SCHEMA }) as
+  if (existsSync(kataYamlPath)) {
+    const kataContent = readFileSync(kataYamlPath, 'utf-8')
+    const kataYaml = jsYaml.load(kataContent, { schema: jsYaml.CORE_SCHEMA }) as
       | Record<string, unknown>
       | undefined
-    if ((modesYaml?.modes as Record<string, unknown> | undefined)?.[modeName]) {
+    if ((kataYaml?.modes as Record<string, unknown> | undefined)?.[modeName]) {
       // biome-ignore lint/suspicious/noConsole: CLI output
-      console.error(`Error: Mode "${modeName}" already exists in modes.yaml`)
+      console.error(`Error: Mode "${modeName}" already exists in kata.yaml`)
       // biome-ignore lint/suspicious/noConsole: CLI output
       console.error('')
       // biome-ignore lint/suspicious/noConsole: CLI output
-      console.error('To update an existing mode, edit modes.yaml directly.')
+      console.error('To update an existing mode, edit kata.yaml directly.')
       process.exit(1)
     }
   }
@@ -314,7 +315,7 @@ export async function registerModeCommand(args: string[]): Promise<void> {
       console.log('')
     }
     // biome-ignore lint/suspicious/noConsole: CLI output
-    console.log(`Would add to modes.yaml:`)
+    console.log(`Would add to kata.yaml:`)
     // biome-ignore lint/suspicious/noConsole: CLI output
     console.log('---')
     // biome-ignore lint/suspicious/noConsole: CLI output
@@ -351,37 +352,34 @@ export async function registerModeCommand(args: string[]): Promise<void> {
     }
   }
 
-  // Update modes.yaml (ensure directory exists)
-  const modesDir = join(modesYamlPath, '..')
-  mkdirSync(modesDir, { recursive: true })
+  // Update kata.yaml modes section
+  const kataDir = join(kataYamlPath, '..')
+  mkdirSync(kataDir, { recursive: true })
   try {
-    let modesYaml: Record<string, unknown> = { modes: {}, categories: {} }
+    let kataYaml: Record<string, unknown> = { modes: {} }
 
-    if (existsSync(modesYamlPath)) {
-      const fileContent = readFileSync(modesYamlPath, 'utf-8')
-      modesYaml = (jsYaml.load(fileContent, { schema: jsYaml.CORE_SCHEMA }) as
+    if (existsSync(kataYamlPath)) {
+      const fileContent = readFileSync(kataYamlPath, 'utf-8')
+      kataYaml = (jsYaml.load(fileContent, { schema: jsYaml.CORE_SCHEMA }) as
         | Record<string, unknown>
-        | undefined) || {
-        modes: {},
-        categories: {},
-      }
+        | undefined) || { modes: {} }
     }
 
-    if (!modesYaml.modes) {
-      modesYaml.modes = {}
+    if (!kataYaml.modes) {
+      kataYaml.modes = {}
     }
     // Add the new mode
-    ;(modesYaml.modes as Record<string, unknown>)[modeName] = modeEntry
+    ;(kataYaml.modes as Record<string, unknown>)[modeName] = modeEntry
 
     // Write back
-    const yamlStr = jsYaml.dump(modesYaml)
+    const yamlStr = jsYaml.dump(kataYaml, { lineWidth: 120, noRefs: true })
 
-    writeFileSync(modesYamlPath, yamlStr)
+    writeFileSync(kataYamlPath, yamlStr)
     // biome-ignore lint/suspicious/noConsole: CLI output
     console.log(`✅ Registered mode: ${modeName}`)
   } catch (err) {
     // biome-ignore lint/suspicious/noConsole: CLI output
-    console.error(`Error: Cannot update modes.yaml: ${err instanceof Error ? err.message : err}`)
+    console.error(`Error: Cannot update kata.yaml: ${err instanceof Error ? err.message : err}`)
     process.exit(1)
   }
 

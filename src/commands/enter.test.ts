@@ -51,6 +51,30 @@ describe('enter', () => {
     tmpDir = makeTmpDir()
     mkdirSync(join(tmpDir, '.claude', 'sessions'), { recursive: true })
     mkdirSync(join(tmpDir, '.claude', 'workflows'), { recursive: true })
+    // Write kata.yaml so loadKataConfig() finds it (no longer reads wm.yaml/modes.yaml)
+    // Include modes needed by tests (freeform, research, flow-deprecated)
+    writeFileSync(
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      [
+        'spec_path: planning/specs',
+        'research_path: planning/research',
+        'modes:',
+        '  freeform:',
+        '    template: freeform.md',
+        '    stop_conditions: []',
+        '    aliases: ["qa"]',
+        '  research:',
+        '    template: research.md',
+        '    stop_conditions: [tasks_complete, committed]',
+        '  implementation:',
+        '    template: implementation.md',
+        '    stop_conditions: [tasks_complete, committed]',
+        '  flow:',
+        '    deprecated: true',
+        '    redirect_to: freeform',
+        '    template: freeform.md',
+      ].join('\n') + '\n',
+    )
     process.env.CLAUDE_PROJECT_DIR = tmpDir
     process.env.CLAUDE_SESSION_ID = '00000000-0000-0000-0000-000000000003'
   })
@@ -204,9 +228,19 @@ Instructions here.
     expect(result.dryRun).toBe(true)
   })
 
-  it('spec_path from wm.yaml is respected', async () => {
-    // Write wm.yaml with custom spec_path
-    writeFileSync(join(tmpDir, '.claude', 'workflows', 'wm.yaml'), 'spec_path: custom/specs\n')
+  it('spec_path from kata.yaml is respected', async () => {
+    // Write kata.yaml with custom spec_path, including the freeform mode needed by the test
+    writeFileSync(
+      join(tmpDir, '.claude', 'workflows', 'kata.yaml'),
+      [
+        'spec_path: custom/specs',
+        'research_path: planning/research',
+        'modes:',
+        '  freeform:',
+        '    template: freeform.md',
+        '    stop_conditions: []',
+      ].join('\n') + '\n',
+    )
 
     // The spec_path is used when enter tries to find a spec file for the issue.
     // We test that loading config works with the custom path.
