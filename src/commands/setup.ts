@@ -6,7 +6,16 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { join } from 'node:path'
 import jsYaml from 'js-yaml'
 import { getDefaultProfile, type SetupProfile } from '../config/setup-profile.js'
-import type { WmConfig } from '../config/wm-config.js'
+// WmConfig inlined — setup.ts still generates wm.yaml for backwards compat
+// TODO(#30 P2.4): generate kata.yaml instead and remove this type
+type WmConfig = Record<string, unknown> & {
+  project?: { name?: string; test_command?: string; ci?: string | null }
+  spec_path?: string
+  research_path?: string
+  session_retention_days?: number
+  reviews?: { spec_review?: boolean; code_review?: boolean; code_reviewer?: string | null }
+  wm_version?: string
+}
 import { getPackageRoot, findProjectDir, getKataDir, getSessionsDir, getProjectTemplatesDir, getProjectWmConfigPath } from '../session/lookup.js'
 
 /**

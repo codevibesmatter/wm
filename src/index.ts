@@ -236,7 +236,7 @@ Usage:
   kata suggest <message>                         Detect mode from message, output guidance
   kata doctor [--fix] [--json]                   Diagnose and fix session state
   kata setup [--yes] [--strict] [--batteries]    Setup kata in a project
-  kata batteries [--update] [--cwd=PATH] [--user] Scaffold batteries-included starter content
+  kata batteries [--update] [--cwd=PATH]           Scaffold batteries-included starter content
   kata config [--show]                            Show resolved config with provenance
   kata providers [list|setup] [--json]             Check/configure agent providers
   kata review --prompt=<name> [--provider=P]       Run ad-hoc agent review
@@ -263,7 +263,6 @@ Setup:
   kata enter onboard                Guided setup interview (interactive, agent-driven)
   kata batteries                  Scaffold batteries content only (idempotent, skips existing)
   kata batteries --update         Re-scaffold batteries, overwriting with latest versions
-  kata batteries --user           Seed user-level templates at ~/.config/kata/
   kata teardown --yes             Remove kata hooks and config
   kata teardown --dry-run         Preview what would be removed
 
@@ -325,8 +324,6 @@ export * from './state/writer.js'
 export * from './state/validator.js'
 export * from './utils/workflow-id.js'
 export * from './utils/timestamp.js'
-export * from './config/parser.js'
-export * from './config/cache.js'
 export * from './config/kata-config.js'
 export * from './config/interviews.js'
 export * from './config/subphase-patterns.js'

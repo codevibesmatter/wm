@@ -1,7 +1,6 @@
 // Session ID lookup utilities
 import * as path from 'node:path'
 import { existsSync, readdirSync, statSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 
 /**
@@ -269,54 +268,7 @@ export async function getStateFilePath(sessionId?: string): Promise<string> {
   return primaryPath // Return primary path even if missing (caller handles error)
 }
 
-/**
- * Get the user-level configuration directory for kata.
- * Respects XDG_CONFIG_HOME if set, otherwise uses ~/.config/kata.
- * Always returns the path — does not create the directory.
- * @returns Absolute path to user config directory
- */
-export function getUserConfigDir(): string {
-  const xdgConfig = process.env.XDG_CONFIG_HOME || path.join(homedir(), '.config')
-  return path.join(xdgConfig, 'kata')
-}
-
-/**
- * Paths to modes.yaml configuration files across all three tiers.
- * Resolution order (lowest to highest priority): package → user → project.
- */
-export interface ModesYamlPaths {
-  packagePath: string
-  userPath: string | null
-  projectPath: string | null
-}
-
-/**
- * Get paths to modes.yaml configuration files across all three tiers.
- * Returns package (always present), user (if exists), and project (if exists).
- * @returns Object with packagePath, userPath, and projectPath
- */
-export function getModesYamlPath(): ModesYamlPaths {
-  const packagePath = path.join(getPackageRoot(), 'modes.yaml')
-
-  let userPath: string | null = null
-  const userCandidate = path.join(getUserConfigDir(), 'modes.yaml')
-  if (existsSync(userCandidate)) {
-    userPath = userCandidate
-  }
-
-  let projectPath: string | null = null
-  try {
-    const projectRoot = findProjectDir()
-    const candidate = getProjectModesPath(projectRoot)
-    if (existsSync(candidate)) {
-      projectPath = candidate
-    }
-  } catch {
-    // No project dir found - project-level override not available
-  }
-
-  return { packagePath, userPath, projectPath }
-}
+// getUserConfigDir and getModesYamlPath removed — user tier eliminated (see issue #30)
 
 /**
  * Get path to package templates directory
@@ -327,13 +279,12 @@ export function getTemplatesDir(): string {
 }
 
 /**
- * Resolve a template path across all three tiers.
- * Lookup order (first match wins): project → user → package batteries.
+ * Resolve a template path across two tiers.
+ * Lookup order (first match wins): project → package batteries.
  *
  * 1. Absolute path — use as-is
  * 2. Project: .kata/templates/{name} (or .claude/workflows/templates/ for old layout)
- * 3. User: ~/.config/kata/templates/{name}
- * 4. Package: batteries/templates/{name}
+ * 3. Package: batteries/templates/{name}
  *
  * @param templatePath - Template filename or path
  * @returns Absolute path to template
@@ -362,14 +313,7 @@ export function resolveTemplatePath(templatePath: string): string {
     // No project dir found — skip project tier
   }
 
-  // 2. User-level template
-  const userTemplate = path.join(getUserConfigDir(), 'templates', templatePath)
-  checked.push(userTemplate)
-  if (existsSync(userTemplate)) {
-    return userTemplate
-  }
-
-  // 3. Package batteries template (lowest priority, runtime fallback)
+  // 2. Package batteries template (fallback)
   const packageTemplate = path.join(getPackageRoot(), 'batteries', 'templates', templatePath)
   checked.push(packageTemplate)
   if (existsSync(packageTemplate)) {
@@ -379,17 +323,16 @@ export function resolveTemplatePath(templatePath: string): string {
   throw new Error(
     `Template not found: ${templatePath}\n` +
       `Checked:\n${checked.map((p) => `  - ${p}`).join('\n')}\n` +
-      `Run 'kata batteries' to seed project templates, or 'kata batteries --user' for user-level.`,
+      `Run 'kata batteries' to seed project templates.`,
   )
 }
 
 /**
- * Resolve a spec template path across all three tiers.
- * Lookup order (first match wins): project → user → package batteries.
+ * Resolve a spec template path across two tiers.
+ * Lookup order (first match wins): project → package batteries.
  *
  * 1. Project: planning/spec-templates/{name}
- * 2. User: ~/.config/kata/spec-templates/{name}
- * 3. Package: batteries/spec-templates/{name}
+ * 2. Package: batteries/spec-templates/{name}
  *
  * @param name - Spec template filename (e.g. "feature.md")
  * @returns Absolute path to spec template
@@ -410,14 +353,7 @@ export function resolveSpecTemplatePath(name: string): string {
     // No project dir found — skip project tier
   }
 
-  // 2. User-level spec template
-  const userTemplate = path.join(getUserConfigDir(), 'spec-templates', name)
-  checked.push(userTemplate)
-  if (existsSync(userTemplate)) {
-    return userTemplate
-  }
-
-  // 3. Package batteries spec template
+  // 2. Package batteries spec template
   const packageTemplate = path.join(getPackageRoot(), 'batteries', 'spec-templates', name)
   checked.push(packageTemplate)
   if (existsSync(packageTemplate)) {
@@ -427,6 +363,6 @@ export function resolveSpecTemplatePath(name: string): string {
   throw new Error(
     `Spec template not found: ${name}\n` +
       `Checked:\n${checked.map((p) => `  - ${p}`).join('\n')}\n` +
-      `Run 'kata batteries' to seed spec templates, or 'kata batteries --user' for user-level.`,
+      `Run 'kata batteries' to seed spec templates.`,
   )
 }
