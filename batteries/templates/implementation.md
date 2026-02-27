@@ -251,15 +251,25 @@ If a build or test fails:
 
 ## REVIEW Protocol
 
-Each REVIEW sub-phase runs an **external agent review** via the provider system.
-If the task description contains a `kata review` command, execute it exactly as written.
-If no external provider is configured, spawn review-agent directly:
+Each REVIEW sub-phase runs reviewers sequentially and prints all results:
+
+**Step 1 — Always spawn review-agent:**
 ```
 Task(subagent_type="review-agent", prompt="
   Review changes for {phase}. Check diff against spec.
   Return: verdict (APPROVE / REQUEST CHANGES) with file:line issues.
 ")
 ```
+
+**Step 2 — Run external providers (if configured):**
+Read `kata.yaml` reviews section. For each provider in `code_reviewers` (or `code_reviewer`
+if using the singular form), run one at a time:
+```bash
+kata review --prompt=code-review --provider=<name>
+```
+Skip this step if `code_review: false` or no reviewers are configured.
+
+Print all review results together before marking the REVIEW task complete.
 
 ## Standalone Verification
 
