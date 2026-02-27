@@ -158,8 +158,7 @@ export function buildSpecTasks(
             .replace(/{verification_plan}/g, vpContent ?? VP_FALLBACK_TEXT)
         }
         if (patternItem.agent) {
-          const quotedPrompt = `"${patternItem.agent.prompt.replace(/"/g, '\\"')}"`
-          const agentLine = `\nRun this command:\n\`\`\`bash\nkata review --prompt=${quotedPrompt}` +
+          const agentLine = `\nRun this command:\n\`\`\`bash\nkata review --prompt=${patternItem.agent.prompt}` +
             (patternItem.agent.provider ? ` --provider=${patternItem.agent.provider}` : '') +
             (patternItem.agent.model ? ` --model=${patternItem.agent.model}` : '') +
             `\n\`\`\`` +

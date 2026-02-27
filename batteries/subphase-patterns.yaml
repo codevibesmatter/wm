@@ -79,7 +79,7 @@ subphase_patterns:
         depends_on_previous: true
         agent:
           provider: claude
-          prompt: "Review the changes for this phase. Check correctness, security, code quality. Flag issues but do not block."
+          prompt: code-review
           gate: false
 
   # Legacy pattern — kept for backwards compatibility with existing project templates
