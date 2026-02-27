@@ -15,6 +15,18 @@ session_retention_days: 7
 #   code_review: false
 #   code_reviewer: null
 
+# Global rules — injected into every mode's context
+# global_rules:
+#   - "Your project-wide rule here"
+
+# Task system rules — injected when mode has phases (tasks)
+# Override to customize; remove to disable
+task_rules:
+  - "Tasks are pre-created by kata enter. Do NOT create new tasks with TaskCreate."
+  - "Run TaskList FIRST to discover pre-created tasks and their dependency chains."
+  - "Use TaskUpdate to mark tasks in_progress/completed. Never use TaskCreate."
+  - "Follow the dependency chain — blocked tasks cannot start until dependencies complete."
+
 modes:
   research:
     name: "Research"

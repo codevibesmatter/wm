@@ -148,8 +148,27 @@ async function buildContextBlock(sessionId: string): Promise<string> {
             }
           }
 
-          // task_system and prime_extensions removed — behavioral guidance
-          // now lives in template bodies (see spec #30, phase P2.5)
+          // Inject global and task rules from kata.yaml
+          const { loadKataConfig } = await import('../config/kata-config.js')
+          const kataConfig = loadKataConfig()
+
+          const ruleParts: string[] = []
+          if (kataConfig.global_rules.length > 0) {
+            ruleParts.push('## Global Rules')
+            for (const rule of kataConfig.global_rules) {
+              ruleParts.push(`- ${rule}`)
+            }
+          }
+          if (kataConfig.task_rules.length > 0 && state.currentPhase) {
+            ruleParts.push('## Task System Rules')
+            for (const rule of kataConfig.task_rules) {
+              ruleParts.push(`- ${rule}`)
+            }
+          }
+          if (ruleParts.length > 0) {
+            contextParts.push('')
+            contextParts.push(ruleParts.join('\n'))
+          }
 
           return contextParts.join('\n')
         }

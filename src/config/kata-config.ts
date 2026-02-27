@@ -88,6 +88,17 @@ export const KataConfigSchema = z.object({
   // Verification
   verify_command: z.string().nullable().optional(),
 
+  // Global rules — injected into every mode's context
+  global_rules: z.array(z.string()).default([]),
+
+  // Task system rules — injected when mode has phases (tasks)
+  task_rules: z.array(z.string()).default([
+    'Tasks are pre-created by kata enter. Do NOT create new tasks with TaskCreate.',
+    'Run TaskList FIRST to discover pre-created tasks and their dependency chains.',
+    'Use TaskUpdate to mark tasks in_progress/completed. Never use TaskCreate.',
+    'Follow the dependency chain — blocked tasks cannot start until dependencies complete.',
+  ]),
+
   // Modes — the core section
   modes: z.record(KataModeConfigSchema).default({}),
 })

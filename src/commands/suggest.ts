@@ -1,4 +1,4 @@
-// kata suggest - Detect mode from user message and output behavioral guidance
+// kata suggest - Detect mode from user message and output entry guidance
 import { loadKataConfig } from '../config/kata-config.js'
 import type { KataConfig, KataModeConfig } from '../config/kata-config.js'
 
