@@ -31,7 +31,6 @@ function showConfig(): void {
   process.stdout.write(`spec_path: ${cfg.spec_path}\n`)
   process.stdout.write(`research_path: ${cfg.research_path}\n`)
   process.stdout.write(`session_retention_days: ${cfg.session_retention_days}\n`)
-  process.stdout.write(`verify_command: ${cfg.verify_command ?? '(not set)'}\n`)
 
   // Reviews section
   if (cfg.reviews) {

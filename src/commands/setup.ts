@@ -6,8 +6,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { join } from 'node:path'
 import jsYaml from 'js-yaml'
 import { getDefaultProfile, type SetupProfile } from '../config/setup-profile.js'
-// WmConfig inlined — setup.ts still generates wm.yaml for backwards compat
-// TODO(#30 P2.4): generate kata.yaml instead and remove this type
+// WmConfig inlined — setup.ts generates kata.yaml
 type WmConfig = Record<string, unknown> & {
   project?: { name?: string; test_command?: string; ci?: string | null }
   spec_path?: string
@@ -343,7 +342,7 @@ function resolveProjectRoot(cwd: string, explicitCwd: boolean): string {
 
 /**
  * Write config files and register hooks (full setup — used by --yes path).
- * Merges with existing wm.yaml so re-running does not lose custom config.
+ * Merges with existing kata.yaml so re-running does not lose custom config.
  */
 function applySetup(cwd: string, profile: SetupProfile, explicitCwd: boolean): void {
   const projectRoot = resolveProjectRoot(cwd, explicitCwd)
@@ -382,7 +381,7 @@ function applySetup(cwd: string, profile: SetupProfile, explicitCwd: boolean): v
 /**
  * kata setup [--yes] [--strict] [--batteries] [--cwd=PATH]
  *
- * Pure configuration — writes wm.yaml, registers hooks, scaffolds content.
+ * Pure configuration — writes kata.yaml, registers hooks, scaffolds content.
  * Always flag-driven; never enters an interactive session.
  *
  * For the guided setup interview, use: kata enter onboard
@@ -394,7 +393,7 @@ export async function setup(args: string[]): Promise<void> {
   const parsed = parseArgs(args)
   // Resolve project root before auto-detecting profile so that running from a
   // subdirectory (e.g. apps/gateway/) doesn't stamp the wrong name/test command
-  // into wm.yaml when .claude/ already exists at a higher level.
+  // into kata.yaml when .claude/ already exists at a higher level.
   const projectRoot = resolveProjectRoot(parsed.cwd, parsed.explicitCwd)
   const profile = getDefaultProfile(projectRoot)
   profile.strict = parsed.strict
@@ -411,7 +410,7 @@ export async function setup(args: string[]): Promise<void> {
       const kd = getKataDir(projectRoot)
       process.stdout.write('kata setup --batteries complete:\n')
       process.stdout.write(`  Project: ${profile.project_name}\n`)
-      process.stdout.write(`  Config: ${kd === '.kata' ? '.kata/wm.yaml' : '.claude/workflows/wm.yaml'}\n`)
+      process.stdout.write(`  Config: ${kd === '.kata' ? '.kata/kata.yaml' : '.claude/workflows/kata.yaml'}\n`)
       process.stdout.write(`  Hooks: .claude/settings.json\n`)
       process.stdout.write('\nBatteries scaffolded:\n')
       if (result.templates.length > 0) {
@@ -443,7 +442,7 @@ export async function setup(args: string[]): Promise<void> {
       process.stdout.write(`  Project: ${profile.project_name}\n`)
       process.stdout.write(`  Test command: ${profile.test_command ?? 'none detected'}\n`)
       process.stdout.write(`  CI: ${profile.ci ?? 'none detected'}\n`)
-      process.stdout.write(`  Config: ${kd2 === '.kata' ? '.kata/wm.yaml' : '.claude/workflows/wm.yaml'}\n`)
+      process.stdout.write(`  Config: ${kd2 === '.kata' ? '.kata/kata.yaml' : '.claude/workflows/kata.yaml'}\n`)
       process.stdout.write(`  Hooks: .claude/settings.json\n`)
       process.stdout.write(`    - SessionStart\n`)
       process.stdout.write(`    - UserPromptSubmit\n`)

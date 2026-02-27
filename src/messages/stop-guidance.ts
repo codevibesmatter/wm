@@ -116,11 +116,7 @@ pnpm install
     case 'verification_not_run': {
       const wmCfg = loadKataConfig()
       const reviewer = wmCfg.reviews?.code_reviewer
-      // Use configured verify_command; fall back to project test command
-      const verifyCmd =
-        wmCfg.verify_command != null
-          ? wmCfg.verify_command
-          : (wmCfg.project?.test_command ?? reviewer ?? 'your verify command')
+      const verifyCmd = wmCfg.project?.test_command ?? reviewer ?? 'your verify command'
       return {
         type: 'verification_not_run',
         title: `BLOCKED: Verification not run for issue #${issueNum}`,
@@ -148,10 +144,7 @@ reviews:
     case 'verification_failed': {
       const failedCfg = loadKataConfig()
       const failedReviewer = failedCfg.reviews?.code_reviewer
-      const failedVerifyCmd =
-        failedCfg.verify_command != null
-          ? failedCfg.verify_command
-          : (failedCfg.project?.test_command ?? failedReviewer ?? 'your verify command')
+      const failedVerifyCmd = failedCfg.project?.test_command ?? failedReviewer ?? 'your verify command'
       return {
         type: 'verification_failed',
         title: `BLOCKED: Verification FAILED for issue #${issueNum}`,
@@ -175,10 +168,7 @@ ${failedVerifyCmd}
     case 'verification_stale': {
       const staleCfg = loadKataConfig()
       const staleReviewer = staleCfg.reviews?.code_reviewer
-      const staleVerifyCmd =
-        staleCfg.verify_command != null
-          ? staleCfg.verify_command
-          : (staleCfg.project?.test_command ?? staleReviewer ?? 'your verify command')
+      const staleVerifyCmd = staleCfg.project?.test_command ?? staleReviewer ?? 'your verify command'
       return {
         type: 'verification_stale',
         title: `BLOCKED: Verification evidence is stale for issue #${issueNum}`,

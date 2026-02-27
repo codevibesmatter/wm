@@ -118,7 +118,7 @@ function getLatestCodeCommitTimestamp(nonCodePaths: string[]): Date | null {
 
 /**
  * Check verification evidence for implementation mode
- * Supports any reviewer (codex, gemini) or custom verify_command output.
+ * Supports any reviewer (codex, gemini).
  * Returns artifact type for guidance lookup instead of hardcoded message.
  */
 function checkVerificationEvidence(issueNumber: number | undefined, nonCodePaths: string[]): {
@@ -417,7 +417,7 @@ function validateCanExit(
     const codeReviewDisabled = wmConfig.reviews?.code_review === false
     const reviewer = wmConfig.reviews?.code_reviewer
     const hasVerifyMechanism =
-      reviewer === 'codex' || reviewer === 'gemini' || !!wmConfig.verify_command
+      reviewer === 'codex' || reviewer === 'gemini'
     const verificationRequired = !codeReviewDisabled && hasVerifyMechanism
 
     if (verificationRequired) {

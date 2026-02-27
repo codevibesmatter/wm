@@ -85,9 +85,6 @@ export const KataConfigSchema = z.object({
   // Providers
   providers: KataProvidersSchema.optional(),
 
-  // Verification
-  verify_command: z.string().nullable().optional(),
-
   // Global rules — injected into every mode's context
   global_rules: z.array(z.string()).default([]),
 
