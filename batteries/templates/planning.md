@@ -527,12 +527,12 @@ phases:
             Return: verdict (PASS / GAPS_FOUND) with specific issues listed by section.
           ")
 
-          2. For each external provider configured (gemini, codex, etc.), run one at a time:
+          2. For each provider in kata.yaml reviews.spec_reviewers (or reviews.spec_reviewer
+             if using the singular form), run one at a time:
           ```bash
-          kata review --prompt=spec-review --context=spec --output=reviews/ --provider=gemini
-          kata review --prompt=spec-review --context=spec --output=reviews/ --provider=codex
+          kata review --prompt=spec-review --context=spec --output=reviews/ --provider=<name>
           ```
-          (skip providers not configured in kata.yaml)
+          Read kata.yaml to find configured reviewers. Skip if none configured.
 
           Print each result as it completes. Use the external provider score for the gate
           (if no external provider, use review-agent verdict: PASS = proceed, GAPS_FOUND = fix loop).

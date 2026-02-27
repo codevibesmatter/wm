@@ -162,12 +162,13 @@ subphase_patterns:
             Return: review verdict (APPROVE / REQUEST CHANGES) with file:line issues.
           ")
 
-          2. For each external provider configured (gemini, codex, etc.), run one at a time:
+          2. For each provider in kata.yaml reviews.code_reviewers (or reviews.code_reviewer
+             if using the singular form), run one at a time:
           ```bash
-          kata review --prompt=code-review --provider=gemini
-          kata review --prompt=code-review --provider=codex
+          kata review --prompt=code-review --provider=<name>
           ```
-          (skip providers not configured in kata.yaml)
+          Read kata.yaml to find configured reviewers. Skip if reviews.code_review is false
+          or no reviewers are configured.
 
           Print each result as it completes. All reviews must finish before marking complete.
         agent:

@@ -49,7 +49,9 @@ export const KataReviewsSchema = z.object({
   spec_review: z.boolean().optional(),
   code_review: z.boolean().optional(),
   code_reviewer: z.string().nullable().optional(),
+  code_reviewers: z.array(z.string()).optional(),
   spec_reviewer: z.string().nullable().optional(),
+  spec_reviewers: z.array(z.string()).optional(),
 })
 
 /**
