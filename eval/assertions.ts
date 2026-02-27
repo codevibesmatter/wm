@@ -709,16 +709,17 @@ export function assertNativeTaskHasInstruction(pattern: string | RegExp): EvalCh
 }
 
 /**
- * Implementation task generation presets for a 2-phase spec with impl-test pattern.
- * Verifies the 2-step subphase pattern expanded correctly into native tasks.
- * P3 Verify phase (kata verify-run) is a separate orchestration task, not per-subphase.
+ * Implementation task generation presets for a 2-phase spec with impl-test-review pattern.
+ * Verifies the 3-step subphase pattern expanded correctly into native tasks.
  */
 export function implTaskGenPresets(): EvalCheckpoint[] {
   return [
     assertNativeTaskHasOriginalId('p2.1:impl'),
     assertNativeTaskHasOriginalId('p2.1:test'),
+    assertNativeTaskHasOriginalId('p2.1:review'),
     assertNativeTaskHasOriginalId('p2.2:impl'),
     assertNativeTaskHasOriginalId('p2.2:test'),
+    assertNativeTaskHasOriginalId('p2.2:review'),
     assertNativeTaskHasInstruction(/check-phase/),
   ]
 }

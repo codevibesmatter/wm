@@ -1,8 +1,8 @@
 /**
- * Implementation Task Generation — Default impl-test-verify pattern
+ * Implementation Task Generation — Default impl-test-review pattern
  *
- * Tests that task generation works correctly with the default impl-test-verify
- * subphase pattern (3-step: impl → test → verify) and a pre-seeded 2-phase spec.
+ * Tests that task generation works correctly with the default impl-test-review
+ * subphase pattern (3-step: impl → test → review) and a pre-seeded 2-phase spec.
  *
  * Uses tanstack-start fixture with pre-seeded spec at
  * planning/specs/100-health-endpoint.md (2 phases: health endpoint + uptime).
@@ -10,9 +10,8 @@
  * Asserts:
  * 1. Standard workflow checks (mode, commit, clean tree, can-exit)
  * 2. Task discipline (pre-created tasks used, all completed, order respected)
- * 3. Subphase pattern expanded: p2.1:impl, p2.1:test, p2.1:verify, p2.2:impl, p2.2:test, p2.2:verify
+ * 3. Subphase pattern expanded: p2.1:impl, p2.1:test, p2.1:review, p2.2:impl, p2.2:test, p2.2:review
  * 4. Test tasks have check-phase instruction
- * 5. Verify tasks have verification plan content
  */
 
 import type { EvalScenario } from '../harness.js'
@@ -24,7 +23,7 @@ import {
 
 export const implTaskGenDefaultScenario: EvalScenario = {
   id: 'impl-task-gen-default',
-  name: 'Implementation task gen: default impl-test-verify pattern',
+  name: 'Implementation task gen: default impl-test-review pattern',
   templatePath: '.claude/workflows/templates/implementation.md',
   fixture: 'tanstack-start',
   prompt:

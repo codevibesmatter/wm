@@ -1,14 +1,15 @@
 /**
- * Verify Sub-Agent — focused eval for kata verify-run command
+ * Standalone Verify Mode — enter verify mode and execute VP steps
  *
- * Tests ONLY the verify sub-agent, not the full implementation pipeline.
- * Fixture is pre-built with a working health endpoint so the agent's
- * only job is to run verify-run and confirm VP steps pass.
+ * Tests the standalone verify mode (kata enter verify) instead of the
+ * removed verify-run subagent. Fixture is pre-built with a working
+ * health endpoint so the agent's only job is to enter verify mode,
+ * execute VP steps, and write evidence.
  *
  * Asserts:
- * 1. Verification evidence file written (vp-100.json)
- * 2. All VP steps passed in the evidence
- * 3. Sub-agent entered verify mode (session state)
+ * 1. Agent entered verify mode (session state)
+ * 2. Verification evidence file written
+ * 3. All VP steps passed in the evidence
  */
 
 import type { EvalScenario } from '../harness.js'
@@ -124,9 +125,9 @@ function assertEvidenceAllPassed(issueNumber: number): EvalCheckpoint {
   }
 }
 
-function assertVerifySessionCreated(): EvalCheckpoint {
+function assertVerifyModeEntered(): EvalCheckpoint {
   return {
-    name: 'verify sub-agent created a verify-mode session',
+    name: 'agent entered verify mode',
     assert(ctx: EvalContext) {
       for (const base of ['.kata/sessions', '.claude/sessions']) {
         const sessions = ctx.listDir(base)
@@ -148,7 +149,7 @@ function assertVerifySessionCreated(): EvalCheckpoint {
 
 export const verifySubagentScenario: EvalScenario = {
   id: 'verify-subagent',
-  name: 'Verify sub-agent (focused)',
+  name: 'Standalone verify mode (focused)',
   fixture: 'tanstack-start',
   fixtureSetup: [
     // Pre-create implementation files so the health endpoint already works
@@ -157,19 +158,20 @@ export const verifySubagentScenario: EvalScenario = {
     `cat > src/server.ts << 'HEREDOC'\n${SERVER_TS}HEREDOC`,
     `cat > src/api/health.test.ts << 'HEREDOC'\n${HEALTH_TEST_TS}HEREDOC`,
     `cat > .claude/workflows/verification-tools.md << 'HEREDOC'\n${VERIFICATION_TOOLS_MD}HEREDOC`,
+    // Commit the implementation so verify mode has something to check
+    'git add -A && git commit -m "feat: add health endpoint"',
     // Verify the build works
     'npm run build 2>&1 | tail -5',
   ],
   prompt:
-    'Run `kata verify-run --issue=100` to execute the Verification Plan for the health endpoint. ' +
-    'Use a Bash timeout of 600000ms since the verify agent needs several minutes to complete. ' +
-    'After it finishes, check the evidence file at .claude/verification-evidence/vp-100.json ' +
-    'and report the results.',
-  maxTurns: 15,
+    'Enter verify mode with `kata enter verify --issue=100` and execute the Verification Plan ' +
+    'for the health endpoint. The spec is at planning/specs/100-health-endpoint.md. ' +
+    'Execute all VP steps, write evidence, and report results.',
+  maxTurns: 20,
   timeoutMs: 10 * 60 * 1000,
   checkpoints: [
+    assertVerifyModeEntered(),
     assertVerifyEvidenceExists(100),
     assertEvidenceAllPassed(100),
-    assertVerifySessionCreated(),
   ],
 }
