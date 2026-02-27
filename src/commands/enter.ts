@@ -631,35 +631,34 @@ export async function enter(args: string[]): Promise<void> {
   // Create workflow directory for state tracking
   const workflowDir = join(dirname(stateFile), 'workflow')
 
-  // Create native tasks (always recreate to clear stale tasks from previous mode/issue)
-  if (!parsed.dryRun) {
-    let tasks: Task[] = []
+  // Build tasks (always, even for dry-run — so subjects can be included in output)
+  let allTasks: Task[] = []
 
-    if (hasContainerPhase && specPhases && issueNum) {
-      const containerPhaseNum = containerPhase
-        ? Number.parseInt(containerPhase.id.replace('p', ''), 10)
-        : 2
+  if (hasContainerPhase && specPhases && issueNum) {
+    const containerPhaseNum = containerPhase
+      ? Number.parseInt(containerPhase.id.replace('p', ''), 10)
+      : 2
 
-      // Create BOTH orchestration tasks (P0, P1, P3, P4, ...) AND spec subphase tasks (P2.X)
-      const orchTasks = modeConfig.template
-        ? buildPhaseTasks(modeConfig.template, workflowId, issueNum)
+    // Create BOTH orchestration tasks (P0, P1, P3, P4, ...) AND spec subphase tasks (P2.X)
+    const orchTasks = modeConfig.template
+      ? buildPhaseTasks(modeConfig.template, workflowId, issueNum)
+      : []
+    // Read spec file content for VP extraction (used by {verification_plan} placeholder)
+    const specContent = specPath ? readFileSync(specPath, 'utf-8') : undefined
+
+    // Build reviewers string for {reviewers} placeholder in review step titles
+    const reviews = config.reviews
+    const externalProviders =
+      reviews?.code_review !== false
+        ? (reviews?.code_reviewers ?? (reviews?.code_reviewer ? [reviews.code_reviewer] : []))
         : []
-      // Read spec file content for VP extraction (used by {verification_plan} placeholder)
-      const specContent = specPath ? readFileSync(specPath, 'utf-8') : undefined
+    const reviewerParts = [
+      'review-agent',
+      ...externalProviders.filter(Boolean).map((p) => `kata review --provider=${p}`),
+    ]
+    const reviewers = reviewerParts.join(', ')
 
-      // Build reviewers string for {reviewers} placeholder in review step titles
-      const reviews = config.reviews
-      const externalProviders =
-        reviews?.code_review !== false
-          ? (reviews?.code_reviewers ?? (reviews?.code_reviewer ? [reviews.code_reviewer] : []))
-          : []
-      const reviewerParts = [
-        'review-agent',
-        ...externalProviders.filter(Boolean).map((p) => `kata review --provider=${p}`),
-      ]
-      const reviewers = reviewerParts.join(', ')
-
-      const specTasks = buildSpecTasks(specPhases, issueNum, resolvedSubphasePattern, containerPhaseNum, specContent, reviewers)
+    const specTasks = buildSpecTasks(specPhases, issueNum, resolvedSubphasePattern, containerPhaseNum, specContent, reviewers)
 
       // Wire cross-phase dependencies:
       // - First P2.X:impl depends on last task of P1 (Claim)
@@ -691,14 +690,14 @@ export async function enter(args: string[]): Promise<void> {
         const num = Number.parseInt(t.id.replace('p', ''), 10)
         return num >= containerPhaseNum
       })
-      tasks = [...beforeContainer, ...specTasks, ...afterContainer]
+      allTasks = [...beforeContainer, ...specTasks, ...afterContainer]
     } else if (modeConfig.template) {
-      tasks = buildPhaseTasks(modeConfig.template, workflowId, issueNum)
+      allTasks = buildPhaseTasks(modeConfig.template, workflowId, issueNum)
     }
 
-    if (tasks.length > 0) {
-      writeNativeTaskFiles(sessionId, tasks, workflowId, issueNum ?? null)
-    }
+  // Write native task files only on real enter (not dry-run)
+  if (!parsed.dryRun && allTasks.length > 0) {
+    writeNativeTaskFiles(sessionId, allTasks, workflowId, issueNum ?? null)
   }
 
   const finalState: SessionState = {
@@ -714,28 +713,7 @@ export async function enter(args: string[]): Promise<void> {
   // Determine action taken (native tasks always recreate, so always 'started')
   const action = parsed.dryRun ? 'dry-run' : 'started'
 
-  // For dry-run, calculate how many tasks would be created
-  // Container phase modes: orchestration tasks + spec phases × subphase pattern
-  // Other modes: one task per template phase with task_config
-  let wouldCreateTasks = 0
-  if (parsed.dryRun) {
-    if (hasContainerPhase && specPhases) {
-      const specTaskCount = specPhases.length * (resolvedSubphasePattern.length || 1)
-      // Orchestration tasks: non-container phases expand steps or fall back to task_config
-      const orchTaskCount =
-        templatePhases
-          ?.filter((p) => !p.container)
-          .reduce((n, p) => n + (p.steps?.length ? p.steps.length : p.task_config?.title ? 1 : 0), 0) ?? 0
-      wouldCreateTasks = orchTaskCount + specTaskCount
-    } else {
-      // Phases with steps create one task per step; phases with only task_config create one task
-      wouldCreateTasks =
-        templatePhases?.reduce(
-          (n, p) => n + (p.steps?.length ? p.steps.length : p.task_config?.title ? 1 : 0),
-          0,
-        ) ?? 0
-    }
-  }
+  const wouldCreateTasks = allTasks.length
 
   // Get phase titles from template for guidance context
   const phaseTitles = modeConfig.template ? getPhaseTitlesFromTemplate(modeConfig.template) : []
@@ -828,6 +806,7 @@ export async function enter(args: string[]): Promise<void> {
         enteredAt: finalState.updatedAt,
         ...(specPath && { specPath, phasesFromSpec: true }),
         ...(issueNum && { issueNumber: issueNum }),
+        tasks: allTasks.map((t) => t.title),
         // guidance contains requiredTodos, workflow steps, and commands
         guidance,
       },
