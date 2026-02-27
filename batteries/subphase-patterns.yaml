@@ -153,23 +153,23 @@ subphase_patterns:
         labels: [review]
         depends_on_previous: true
         instruction: |
-          Spawn review-agent as a background task (runs while external reviewer works in parallel):
+          Run all reviewers sequentially and print each result:
+
+          1. Spawn review-agent:
           Task(subagent_type="review-agent", prompt="
             Review the changes for {phase_name}.
             Check the diff against the spec for correctness, edge cases, and quality.
             Return: review verdict (APPROVE / REQUEST CHANGES) with file:line issues.
-          ", run_in_background=true)
+          ")
 
-          If an external provider is configured (task description has a `kata review` command),
-          run it now so both reviews proceed concurrently:
+          2. For each external provider configured (gemini, codex, etc.), run one at a time:
           ```bash
-          kata review ...
+          kata review --prompt=code-review --provider=gemini
+          kata review --prompt=code-review --provider=codex
           ```
+          (skip providers not configured in kata.yaml)
 
-          Then collect review-agent results:
-          TaskOutput(task_id=..., block=true)
-
-          Print all review results together before marking complete.
+          Print each result as it completes. All reviews must finish before marking complete.
         agent:
           provider: claude
           prompt: code-review

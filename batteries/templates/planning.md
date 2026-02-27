@@ -517,26 +517,25 @@ phases:
           gate: true
           threshold: 75
         instruction: |
-          Spawn review-agent as a background task to review the spec in parallel:
+          Run all reviewers sequentially and print each result:
+
+          1. Spawn review-agent:
           Task(subagent_type="review-agent", prompt="
             Review the spec at planning/specs/{spec-file}.md for quality and completeness.
             Check: behaviors have ID/Trigger/Expected/Verify, no placeholder text,
             phases cover all behaviors, each phase has test_cases, non-goals present.
             Return: verdict (PASS / GAPS_FOUND) with specific issues listed by section.
-          ", run_in_background=true)
+          ")
 
-          Then run the external provider review concurrently:
+          2. For each external provider configured (gemini, codex, etc.), run one at a time:
           ```bash
-          kata review --prompt=spec-review --context=spec --output=reviews/
+          kata review --prompt=spec-review --context=spec --output=reviews/ --provider=gemini
+          kata review --prompt=spec-review --context=spec --output=reviews/ --provider=codex
           ```
+          (skip providers not configured in kata.yaml)
 
-          This runs the spec-review prompt against the spec file and returns
-          a score (0-100) with categorized issues.
-
-          Then collect review-agent results:
-          TaskOutput(task_id=..., block=true)
-
-          Print all review results together. Use the external provider score for the gate.
+          Print each result as it completes. Use the external provider score for the gate
+          (if no external provider, use review-agent verdict: PASS = proceed, GAPS_FOUND = fix loop).
 
           **Check result:**
           - **PASS (score >= 75):** Skip to close-review step.
