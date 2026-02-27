@@ -6,7 +6,6 @@ import { getCurrentSessionId, findProjectDir, getStateFilePath, getVerificationD
 import { readState } from '../state/reader.js'
 import {
   type StopGuidance,
-  getArtifactMessage,
   getEscapeHatchMessage,
   getNextStepMessage,
 } from '../messages/stop-guidance.js'
@@ -99,61 +98,6 @@ function getLatestCodeCommitTimestamp(nonCodePaths: string[]): Date | null {
 }
 
 /**
- * Check verification evidence for implementation mode
- * Supports any reviewer (codex, gemini).
- * Returns artifact type for guidance lookup instead of hardcoded message.
- */
-function checkVerificationEvidence(issueNumber: number | undefined, nonCodePaths: string[]): {
-  passed: boolean
-  artifactType?: 'verification_not_run' | 'verification_failed' | 'verification_stale'
-} {
-  if (!issueNumber) return { passed: true } // Skip if no issue linked
-
-  try {
-    // Resolve absolute path via findProjectDir so can-exit works from any subdirectory
-    // and hook invocations don't falsely report evidence missing
-    const projectRoot = findProjectDir()
-    const evidenceFile = join(
-      getVerificationDir(projectRoot),
-      `${issueNumber}.json`,
-    )
-    if (!existsSync(evidenceFile)) {
-      return { passed: false, artifactType: 'verification_not_run' }
-    }
-    const evidence = readFileSync(evidenceFile, 'utf-8').trim()
-    const parsed = JSON.parse(evidence)
-
-    // Check if verification was run at all
-    if (!parsed.verifiedAt) {
-      return { passed: false, artifactType: 'verification_not_run' }
-    }
-
-    // Check if verification passed
-    if (parsed.passed !== true) {
-      return { passed: false, artifactType: 'verification_failed' }
-    }
-
-    // Timestamp check: evidence must be newer than the latest code commit
-    // (non-code commits like evidence/docs don't invalidate verification)
-    const latestCodeCommit = getLatestCodeCommitTimestamp(nonCodePaths)
-    if (latestCodeCommit) {
-      const evidenceDate = new Date(parsed.verifiedAt as string)
-      if (!isNaN(evidenceDate.getTime()) && evidenceDate < latestCodeCommit) {
-        return { passed: false, artifactType: 'verification_stale' }
-      }
-    }
-
-    return { passed: true }
-  } catch {
-    // No evidence file - verification not run
-    return {
-      passed: false,
-      artifactType: 'verification_not_run',
-    }
-  }
-}
-
-/**
  * Check that at least one phase evidence file exists with fresh timestamp and overallPassed.
  * Reads .claude/verification-evidence/phase-*-{issueNumber}.json files.
  */
@@ -221,73 +165,6 @@ function checkTestsPass(issueNumber: number, nonCodePaths: string[]): { passed: 
 }
 
 /**
- * Check that VP (Verification Plan) evidence files exist for all spec phases.
- * Reads .kata/verification-evidence/vp-*-{issueNumber}.json files.
- * Each file must have allStepsPassed: true and a timestamp newer than the latest commit.
- */
-function checkVpEvidence(issueNumber: number, nonCodePaths: string[]): { passed: boolean; reason?: string } {
-  try {
-    const projectRoot = findProjectDir()
-    const evidenceDir = getVerificationDir(projectRoot)
-    if (!existsSync(evidenceDir)) {
-      return {
-        passed: false,
-        reason: `Verification Plan has not been executed. Run the VERIFY step for each phase.`,
-      }
-    }
-
-    const vpFiles = readdirSync(evidenceDir)
-      .filter((f) => f.startsWith('vp-') && f.endsWith(`-${issueNumber}.json`))
-      .map((f) => join(evidenceDir, f))
-
-    if (vpFiles.length === 0) {
-      return {
-        passed: false,
-        reason: `No VP evidence files found. Run the VERIFY step for each implementation phase.`,
-      }
-    }
-
-    const latestCodeCommit = getLatestCodeCommitTimestamp(nonCodePaths)
-
-    for (const file of vpFiles) {
-      try {
-        const content = JSON.parse(readFileSync(file, 'utf-8'))
-        const phaseId = content.phaseId ?? file
-
-        if (content.allStepsPassed !== true) {
-          return {
-            passed: false,
-            reason: `VP for phase ${phaseId} has failing steps. Fix implementation and re-run VERIFY.`,
-          }
-        }
-
-        if (latestCodeCommit && content.timestamp) {
-          const evidenceDate = new Date(content.timestamp as string)
-          if (!isNaN(evidenceDate.getTime()) && evidenceDate < latestCodeCommit) {
-            return {
-              passed: false,
-              reason: `VP evidence for phase ${phaseId} is stale (predates latest commit). Re-run VERIFY.`,
-            }
-          }
-        }
-      } catch {
-        return {
-          passed: false,
-          reason: `VP evidence file unreadable. Re-run VERIFY for issue #${issueNumber}.`,
-        }
-      }
-    }
-
-    return { passed: true }
-  } catch {
-    return {
-      passed: false,
-      reason: `Verification Plan has not been executed. Run the VERIFY step for each phase.`,
-    }
-  }
-}
-
-/**
  * Check that at least one new test function was added in this session vs diff_base.
  * Reads project.diff_base and project.test_file_pattern from wm.yaml.
  */
@@ -340,12 +217,10 @@ function validateCanExit(
 ): {
   canExit: boolean
   reasons: string[]
-  artifactType?: string
   hasOpenTasks: boolean
   usingTasks: boolean
 } {
   const reasons: string[] = []
-  let artifactType: string | undefined
 
   // No stop conditions = can always exit
   if (stopConditions.length === 0) {
@@ -394,44 +269,11 @@ function validateCanExit(
   const wmConfig = loadKataConfig()
   const nonCodePaths = wmConfig.non_code_paths
 
-  // ── verification ── (only when a verify mechanism is configured)
-  if (checks.has('verification')) {
-    const codeReviewDisabled = wmConfig.reviews?.code_review === false
-    const reviewer = wmConfig.reviews?.code_reviewer
-    const hasVerifyMechanism =
-      reviewer === 'codex' || reviewer === 'gemini'
-    const verificationRequired = !codeReviewDisabled && hasVerifyMechanism
-
-    if (verificationRequired) {
-      const verifCheck = checkVerificationEvidence(issueNumber, nonCodePaths)
-      if (!verifCheck.passed && verifCheck.artifactType) {
-        artifactType = verifCheck.artifactType
-        reasons.push(
-          verifCheck.artifactType === 'verification_not_run'
-            ? 'Verification not run'
-            : verifCheck.artifactType === 'verification_stale'
-              ? 'Verification evidence is stale (predates latest commit)'
-              : 'Verification failed',
-        )
-      }
-    }
-  }
-
   // ── tests_pass ──
   if (checks.has('tests_pass') && issueNumber) {
     const testsCheck = checkTestsPass(issueNumber, nonCodePaths)
     if (!testsCheck.passed && testsCheck.reason) {
       reasons.push(testsCheck.reason)
-    }
-  }
-
-  // ── verification_plan_executed ──
-  // Guard: requires issueNumber because VP evidence files are named vp-*-{issueNumber}.json.
-  // Without an issue, there is no evidence to check — the condition vacuously passes.
-  if (checks.has('verification_plan_executed') && issueNumber) {
-    const vpCheck = checkVpEvidence(issueNumber, nonCodePaths)
-    if (!vpCheck.passed && vpCheck.reason) {
-      reasons.push(vpCheck.reason)
     }
   }
 
@@ -456,7 +298,6 @@ function validateCanExit(
   return {
     canExit: reasons.length === 0,
     reasons,
-    artifactType,
     hasOpenTasks,
     usingTasks,
   }
@@ -470,17 +311,11 @@ function buildStopGuidance(
   hasOpenTasks: boolean,
   usingTasks: boolean,
   sessionId: string,
-  artifactType: string | undefined,
   workflowId: string,
   issueNumber: number | undefined,
 ): StopGuidance | undefined {
   // No guidance needed if can exit
   if (canExitNow) return undefined
-
-  const context = { sessionId, issueNumber, workflowId }
-
-  // Get artifact-specific message if applicable
-  const artifactMessage = artifactType ? getArtifactMessage(artifactType, context) : undefined
 
   // Get next task for next step guidance (only if open)
   let nextPhase: StopGuidance['nextPhase']
@@ -500,7 +335,6 @@ function buildStopGuidance(
   return {
     nextPhase,
     nextStepMessage,
-    artifactMessage,
     escapeHatch: getEscapeHatchMessage(),
   }
 }
@@ -550,7 +384,6 @@ export async function canExit(args: string[]): Promise<void> {
   const {
     canExit: canExitNow,
     reasons,
-    artifactType,
     hasOpenTasks,
     usingTasks,
   } = validateCanExit(workflowId, sessionId, stopConditions, issueNumber)
@@ -561,7 +394,6 @@ export async function canExit(args: string[]): Promise<void> {
     hasOpenTasks,
     usingTasks,
     sessionId,
-    artifactType,
     workflowId,
     issueNumber,
   )
@@ -595,12 +427,6 @@ export async function canExit(args: string[]): Promise<void> {
         console.log(`  ${reason}`)
       }
       // Show guidance in human-readable form
-      if (guidance?.artifactMessage) {
-        // biome-ignore lint/suspicious/noConsole: intentional CLI output
-        console.log(`\n${guidance.artifactMessage.title}`)
-        // biome-ignore lint/suspicious/noConsole: intentional CLI output
-        console.log(guidance.artifactMessage.message)
-      }
       if (guidance?.nextStepMessage) {
         // biome-ignore lint/suspicious/noConsole: intentional CLI output
         console.log(guidance.nextStepMessage)

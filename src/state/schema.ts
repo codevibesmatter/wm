@@ -9,10 +9,8 @@ export const STOP_CONDITION_TYPES = [
   'tasks_complete',
   'committed',
   'pushed',
-  'verification',
   'tests_pass',
   'feature_tests_added',
-  'verification_plan_executed',
 ] as const
 
 export type StopCondition = (typeof STOP_CONDITION_TYPES)[number]
