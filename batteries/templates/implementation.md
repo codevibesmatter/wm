@@ -201,10 +201,9 @@ P3: Close
 - **No scope creep** — spec's non-goals are off-limits
 - **Commit per phase** — smaller commits, easier review
 
-## CHECK Protocol
+## TEST Protocol
 
-Each CHECK sub-phase follows this exact sequence. Run deterministic checks
-first, then do a spec-checklist review. Do NOT skip steps or reorder.
+Each TEST sub-phase runs deterministic checks only. Do NOT skip steps or reorder.
 
 ### Step 1: Build check
 
@@ -221,27 +220,14 @@ its YAML, verify each one:
 ```
 For each test_case in the spec phase:
   - Does a test exist that covers this case?
-  - If not, write the test BEFORE marking CHECK complete.
+  - If not, write the test BEFORE marking TEST complete.
   - Run the test and confirm it passes.
 ```
 
 If no test infrastructure exists, check the spec's Verification Strategy
 section for setup instructions.
 
-### Step 3: Spec-checklist review
-
-For each behavior (B1, B2...) covered by this phase, answer:
-
-```
-- [ ] Trigger: Does the code handle the specified trigger?
-- [ ] Expected: Does the output match what the spec says?
-- [ ] Verify: Can the verification method described in the spec confirm it works?
-```
-
-Keep this simple. Do NOT write elaborate self-review prompts — simple
-"does X satisfy Y?" checks are more reliable than complex analysis.
-
-### Step 4: Check for implementation hints
+### Step 3: Check for implementation hints
 
 Re-read the spec's Implementation Hints section. Verify:
 - Correct imports used (not guessed from node_modules exploration)
@@ -254,6 +240,13 @@ If a build or test fails:
 - Fix the issue using the error output (not blind retry)
 - Maximum 3 fix attempts per failure before escalating to user
 - Never silence errors, skip tests, or weaken assertions to pass
+
+## REVIEW Protocol
+
+Each REVIEW sub-phase runs an **external agent review** via the provider system.
+Do NOT do the review yourself — run the command from the task description.
+The task description contains a `kata review` command in a bash code block.
+Execute that command exactly as written.
 
 ## Standalone Verification
 
