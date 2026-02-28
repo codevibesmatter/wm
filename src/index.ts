@@ -31,6 +31,7 @@ import { modes } from './commands/modes.js'
 import { checkPhase } from './commands/check-phase.js'
 import { providers as providersCommand } from './commands/providers.js'
 import { review as reviewCommand } from './commands/review.js'
+import { postmortem } from './commands/postmortem.js'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getPackageRoot } from './session/lookup.js'
@@ -173,6 +174,10 @@ async function main() {
 
       case 'review':
         await reviewCommand(commandArgs)
+        break
+
+      case 'postmortem':
+        await postmortem(commandArgs)
         break
 
       case 'projects':
