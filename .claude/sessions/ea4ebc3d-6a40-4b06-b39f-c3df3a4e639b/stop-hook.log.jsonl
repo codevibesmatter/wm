@@ -9,3 +9,5 @@
 {"ts":"2026-02-28T00:17:14.270Z","decision":"block","reasons":["Uncommitted changes in tracked files"]}
 {"ts":"2026-02-28T00:17:27.494Z","decision":"allow","reasons":[],"note":"all conditions met"}
 {"ts":"2026-02-28T00:40:40.795Z","decision":"block","reasons":["Uncommitted changes in tracked files"]}
+{"ts":"2026-02-28T00:58:01.680Z","decision":"block","reasons":["Uncommitted changes in tracked files"]}
+{"ts":"2026-02-28T00:58:21.426Z","decision":"block","reasons":["Uncommitted changes in tracked files"]}

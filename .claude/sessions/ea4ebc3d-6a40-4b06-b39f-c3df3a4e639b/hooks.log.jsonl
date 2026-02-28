@@ -416,3 +416,13 @@
 {"hook":"mode-gate","decision":"allow","tool":"AskUserQuestion","ts":"2026-02-28T00:41:04.959Z"}
 {"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:49:23.020Z"}
 {"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:49:27.860Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskOutput","ts":"2026-02-28T00:49:30.946Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["Uncommitted changes in tracked files"],"ts":"2026-02-28T00:58:01.680Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:58:05.249Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:58:10.275Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["Uncommitted changes in tracked files"],"ts":"2026-02-28T00:58:21.426Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:58:33.582Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:58:38.391Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Grep","ts":"2026-02-28T00:58:41.902Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:58:45.608Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:58:49.506Z"}
