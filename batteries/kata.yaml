@@ -129,6 +129,25 @@ modes:
     template: "verify.md"
     workflow_prefix: "VF"
 
+  debug:
+    name: "Debug"
+    description: "Systematic hypothesis-driven debugging with reproduction, root cause analysis, and fix"
+    issue_handling: "none"
+    stop_conditions:
+      - tasks_complete
+      - committed
+      - pushed
+    intent_keywords:
+      - "debug"
+      - "investigate"
+      - "bug"
+      - "why is"
+      - "broken"
+    template: "debug.md"
+    workflow_prefix: "DB"
+    aliases:
+      - "investigate"
+
   onboard:
     name: "Onboard"
     description: "Configure kata for a new project"
@@ -139,72 +158,3 @@ modes:
       - "configure kata"
       - "initialize kata"
     template: "onboard.md"
-
-  # --- Deprecated Redirects ---
-
-  strategic:
-    deprecated: true
-    redirect_to: "planning"
-    template: "planning.md"
-
-  doctrine:
-    deprecated: true
-    redirect_to: "planning"
-    template: "planning.md"
-
-  feature-clarification:
-    deprecated: true
-    redirect_to: "planning"
-    template: "feature-clarification.md"
-
-  micro-planning:
-    deprecated: true
-    redirect_to: "planning"
-    template: "planning.md"
-
-  bugfix:
-    deprecated: true
-    redirect_to: "implementation"
-    template: "implementation.md"
-
-  hotfix:
-    deprecated: true
-    redirect_to: "implementation"
-    template: "implementation-hotfix.md"
-
-  debug:
-    deprecated: true
-    redirect_to: "research"
-    template: "debug.md"
-
-  management:
-    deprecated: true
-    redirect_to: "freeform"
-    template: "freeform.md"
-
-  orchestrator:
-    deprecated: true
-    redirect_to: "task"
-    template: "task.md"
-
-  dedicated-testing:
-    deprecated: true
-    redirect_to: "task"
-    template: "implementation-testing.md"
-
-  calibration:
-    deprecated: true
-    redirect_to: "freeform"
-    template: "freeform.md"
-
-  session-discovery:
-    deprecated: true
-    redirect_to: "research"
-    template: "research.md"
-
-  flow:
-    deprecated: true
-    redirect_to: "freeform"
-    template: "freeform.md"
-    aliases:
-      - "flow-state"
