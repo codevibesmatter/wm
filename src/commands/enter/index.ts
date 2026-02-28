@@ -11,6 +11,7 @@ export {
   parseTemplateYaml,
   getPhaseTitlesFromTemplate,
   parseAndValidateTemplatePhases,
+  getTemplateReviewerPrompt,
 } from './template.js'
 
 export { findSpecFile, parseSpecYaml } from './spec.js'

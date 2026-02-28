@@ -19,6 +19,8 @@ export interface TemplateYaml {
   phases?: PhaseDefinition[]
   global_conditions?: string[]
   workflow_id_format?: string
+  /** Prompt name to use for external code reviewer commands (default: code-review) */
+  reviewer_prompt?: string
 }
 
 /**

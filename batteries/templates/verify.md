@@ -4,6 +4,7 @@ name: "Verification Plan Execution"
 description: "Standalone VP execution with repair loop — run after implementation or task mode"
 mode: verify
 workflow_prefix: "VF"
+reviewer_prompt: verify-fix-review
 
 phases:
   - id: p0
@@ -210,7 +211,7 @@ phases:
 
           2. Run each external provider from the task title in sequence:
           ```bash
-          # run each `kata review --provider=<name>` listed in the task title
+          # run each `kata review --prompt=verify-fix-review --provider=<name>` listed in the task title
           ```
 
           Print each result as it completes.
@@ -418,8 +419,8 @@ specifically targets hasty-fix failure modes rather than general code style.
    - Regression risk (no collateral damage to other VP steps)
    - Correctness (logic sound, edge cases handled)
    - Side effects (no unintended state changes)
-2. **External providers** — run `kata review --provider=<name>` for each configured reviewer
-   (pre-expanded into the task title as `{reviewers}` at `kata enter` time)
+2. **External providers** — run `kata review --prompt=verify-fix-review --provider=<name>` for
+   each configured reviewer (pre-expanded into the task title as `{reviewers}` at `kata enter` time)
 
 **If REQUEST CHANGES:** fix the issues, commit, and re-run the review.
 **If APPROVE:** proceed to P3 Evidence.

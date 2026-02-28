@@ -65,3 +65,12 @@ export function parseAndValidateTemplatePhases(templatePath: string): PhaseDefin
       | undefined,
   }))
 }
+
+/**
+ * Get reviewer_prompt from template frontmatter (default: 'code-review')
+ */
+export function getTemplateReviewerPrompt(templatePath: string): string {
+  const fullTemplatePath = resolveTemplatePath(templatePath)
+  const template = parseTemplateYaml(fullTemplatePath)
+  return template?.reviewer_prompt ?? 'code-review'
+}

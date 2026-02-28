@@ -23,6 +23,7 @@ import {
   parseTemplateYaml,
   getPhaseTitlesFromTemplate,
   parseAndValidateTemplatePhases,
+  getTemplateReviewerPrompt,
 } from './enter/template.js'
 
 /**
@@ -638,9 +639,11 @@ export async function enter(args: string[]): Promise<void> {
     reviews?.code_review !== false
       ? (reviews?.code_reviewers ?? (reviews?.code_reviewer ? [reviews.code_reviewer] : []))
       : []
+  // Read reviewer_prompt from template frontmatter (default: 'code-review')
+  const reviewerPrompt = modeConfig.template ? getTemplateReviewerPrompt(modeConfig.template) : 'code-review'
   const reviewerParts = [
     'review-agent',
-    ...externalProviders.filter(Boolean).map((p) => `kata review --provider=${p}`),
+    ...externalProviders.filter(Boolean).map((p) => `kata review --prompt=${reviewerPrompt} --provider=${p}`),
   ]
   const reviewers = reviewerParts.join(', ')
 
