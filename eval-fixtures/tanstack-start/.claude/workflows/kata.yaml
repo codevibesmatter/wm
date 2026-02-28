@@ -34,7 +34,7 @@ modes:
     description: "Execute approved specs"
     issue_handling: "required"
     issue_label: "feature"
-    stop_conditions: [tasks_complete, committed, pushed, verification, tests_pass, feature_tests_added]
+    stop_conditions: [tasks_complete, committed, pushed, tests_pass, feature_tests_added]
     intent_keywords: ["implement", "build", "code", "develop", "execute spec"]
     template: "implementation.md"
 
@@ -61,7 +61,7 @@ modes:
     name: "Verify"
     description: "Execute Verification Plan steps"
     issue_handling: "none"
-    stop_conditions: [tasks_complete, verification_plan_executed]
+    stop_conditions: [tasks_complete, committed, pushed]
     intent_keywords: ["verify", "run verification", "execute VP"]
     template: "verify.md"
     workflow_prefix: "VF"

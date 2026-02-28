@@ -61,10 +61,10 @@ export const subphasePatternSchema = z.object({
 
 /**
  * Schema for a single phase definition
- * Phase IDs must match pattern: p0, p1, p2, or p2.1, p2.2 (subphases)
+ * Phase IDs must match pattern: p0, p1, p2, p2.1, p2.2 (subphases), or p2-name (named subphases)
  */
 export const phaseSchema = z.object({
-  id: z.string().regex(/^p\d+(\.\d+)?$/, 'Phase ID must match pattern: p0, p1, p2, or p2.1, p2.2'),
+  id: z.string().regex(/^p\d+(\.\d+|-[a-z][a-z0-9-]*)?$/, 'Phase ID must match pattern: p0, p1, p2, p2.1, or p2-name'),
   name: z.string().min(1, 'Phase name cannot be empty'),
   task_config: phaseTaskConfigSchema.optional(),
   steps: z.array(phaseStepSchema).optional(), // Individual trackable units within phase (e.g., interview rounds)
