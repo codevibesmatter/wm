@@ -15,10 +15,12 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import { homedir } from 'node:os'
+import { spawnSync } from 'node:child_process'
 import { findProjectDir, getSessionsDir } from '../session/lookup.js'
 import { readState } from '../state/reader.js'
 import type { SessionState } from '../state/schema.js'
 import { runAgentStep } from '../providers/step-runner.js'
+import { loadPrompt } from '../providers/prompt.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -461,20 +463,50 @@ async function runJudge(
   ].find(p => existsSync(p))
 
   try {
-    // Summarize transcript to avoid E2BIG or context overflow
+    // Summarize transcript to avoid context overflow
     const summary = summarizeTranscriptFile(transcriptPath)
-    const result = await runAgentStep(
-      {
-        provider: provider || 'claude',
-        prompt: 'transcript-review',
-        context: templatePath ? ['template'] : [],
-      },
-      {
-        cwd: projectDir,
-        templatePath,
-        extraContext: `## Session Transcript (summarized)\n\n\`\`\`\n${summary}\n\`\`\``,
-      },
-    )
+
+    // Build context: mode template + summarized transcript
+    const sections: string[] = []
+    if (templatePath && existsSync(templatePath)) {
+      sections.push(`## Mode Template\n\n\`\`\`markdown\n${readFileSync(templatePath, 'utf-8')}\n\`\`\``)
+    }
+    sections.push(`## Session Transcript (summarized)\n\n\`\`\`\n${summary}\n\`\`\``)
+    const promptText = `${loadPrompt('transcript-review')}\n\n---\n\n${sections.join('\n\n---\n\n')}`
+
+    let output: string
+    let modelUsed: string | undefined
+
+    if ((provider || 'claude') === 'claude') {
+      // Use `claude -p` (print mode) — uses CC's own auth, avoids SDK nesting
+      // Pass prompt via stdin with cleaned env (unset CLAUDECODE* to allow nested invocation)
+      const cleanedEnv = Object.fromEntries(
+        Object.entries(process.env).filter(([k]) =>
+          !k.startsWith('CLAUDECODE') && !k.startsWith('CLAUDE_CODE_') && k !== 'CLAUDE_PROJECT_DIR'
+        )
+      ) as Record<string, string>
+      const result = spawnSync('claude', ['-p', '--allowedTools', ''], {
+        input: promptText,
+        encoding: 'utf-8',
+        timeout: 120_000,
+        maxBuffer: 10 * 1024 * 1024,
+        env: cleanedEnv,
+      })
+      if (result.error) throw result.error
+      if (result.status !== 0) throw new Error(result.stderr || `claude exited ${result.status}`)
+      output = result.stdout ?? ''
+      modelUsed = 'claude'
+    } else {
+      // Non-claude providers: use runAgentStep (e.g. gemini via CLI subprocess)
+      const result = await runAgentStep(
+        { provider, prompt: 'transcript-review', context: templatePath ? ['template'] : [] },
+        { cwd: projectDir, templatePath, extraContext: `## Session Transcript (summarized)\n\n\`\`\`\n${summary}\n\`\`\`` },
+      )
+      output = result.output
+      modelUsed = result.model
+    }
+
+    const result = { output, model: modelUsed }
 
     const agentScore = extractScore(result.output, 'AGENT_SCORE')
     const systemScore = extractScore(result.output, 'SYSTEM_SCORE')
