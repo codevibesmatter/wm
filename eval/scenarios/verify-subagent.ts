@@ -100,24 +100,34 @@ const VERIFICATION_TOOLS_MD = `# Verification Tools
 
 function assertEvidenceAllPassed(issueNumber: number): EvalCheckpoint {
   return {
-    name: `evidence vp-${issueNumber}.json has all steps passed`,
+    name: `evidence for issue #${issueNumber} has all steps passed`,
     assert(ctx: EvalContext) {
       for (const base of ['.kata/verification-evidence', '.claude/verification-evidence']) {
-        const path = `${base}/vp-${issueNumber}.json`
-        if (!ctx.fileExists(path)) continue
+        let files: string[]
         try {
-          const evidence = JSON.parse(ctx.readFile(path)) as {
-            steps: Array<{ id: string; status: string }>
-            allStepsPassed?: boolean
+          files = ctx.listDir(base)
+        } catch {
+          continue
+        }
+        // Match vp-p1-100.json, vp-100.json, vp-task-100.json, etc.
+        const matching = files.filter((f) => f.endsWith('.json') && f.includes(`-${issueNumber}.json`))
+        for (const file of matching) {
+          try {
+            const evidence = JSON.parse(ctx.readFile(`${base}/${file}`)) as {
+              steps: Array<{ id: string; status: string; passed?: boolean }>
+              allStepsPassed?: boolean
+            }
+            const allPassed =
+              evidence.allStepsPassed ??
+              evidence.steps.every((s) => s.status === 'pass' || s.passed === true)
+            if (!allPassed) {
+              const failed = evidence.steps.filter((s) => s.status !== 'pass' && s.passed !== true)
+              return `VP steps failed in ${file}: ${failed.map((s) => s.id).join(', ')}`
+            }
+            return null
+          } catch (err) {
+            return `Failed to parse evidence ${file}: ${err}`
           }
-          const allPassed = evidence.allStepsPassed ?? evidence.steps.every((s) => s.status === 'pass')
-          if (!allPassed) {
-            const failed = evidence.steps.filter((s) => s.status !== 'pass')
-            return `VP steps failed: ${failed.map((s) => s.id).join(', ')}`
-          }
-          return null
-        } catch (err) {
-          return `Failed to parse evidence: ${err}`
         }
       }
       return `No evidence file found for issue #${issueNumber}`
