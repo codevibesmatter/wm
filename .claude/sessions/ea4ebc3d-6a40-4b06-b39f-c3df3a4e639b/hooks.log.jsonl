@@ -404,3 +404,15 @@
 {"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:34:33.431Z"}
 {"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:34:36.848Z"}
 {"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:34:41.331Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskOutput","ts":"2026-02-28T00:34:44.363Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Grep","ts":"2026-02-28T00:39:27.352Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Grep","ts":"2026-02-28T00:39:31.318Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Grep","ts":"2026-02-28T00:39:40.479Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-28T00:39:46.884Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Edit","ts":"2026-02-28T00:39:55.676Z"}
+{"hook":"user-prompt","decision":"context","active_mode":"task","ts":"2026-02-28T00:40:15.271Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["Uncommitted changes in tracked files"],"ts":"2026-02-28T00:40:40.795Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:40:44.926Z"}
+{"hook":"mode-gate","decision":"allow","tool":"AskUserQuestion","ts":"2026-02-28T00:41:04.959Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:49:23.020Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:49:27.860Z"}
