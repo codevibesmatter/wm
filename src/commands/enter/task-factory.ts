@@ -212,6 +212,7 @@ export function buildPhaseTasks(
   templatePath: string,
   workflowId: string,
   issueNum?: number,
+  reviewers?: string,
 ): Task[] {
   const fullTemplatePath = resolveTemplatePath(templatePath)
 
@@ -245,9 +246,12 @@ export function buildPhaseTasks(
       for (let i = 0; i < phase.steps.length; i++) {
         const step = phase.steps[i]
         const taskId = `${phase.id}:${step.id}`
+        const resolvedStepTitle = reviewers
+          ? step.title.replace(/{reviewers}/g, reviewers)
+          : step.title
         const title = issueNum
-          ? `GH#${issueNum}: ${phase.id.toUpperCase()}: ${step.title}`
-          : `${workflowId}: ${phase.name}: ${step.title}`
+          ? `GH#${issueNum}: ${phase.id.toUpperCase()}: ${resolvedStepTitle}`
+          : `${workflowId}: ${phase.name}: ${resolvedStepTitle}`
 
         const dependsOn: string[] = []
         if (i === 0) {
@@ -258,6 +262,11 @@ export function buildPhaseTasks(
           dependsOn.push(prevStepTaskId)
         }
 
+        const resolvedInstruction =
+          reviewers && step.instruction
+            ? step.instruction.replace(/{reviewers}/g, reviewers)
+            : step.instruction
+
         tasks.push({
           id: taskId,
           title,
@@ -265,7 +274,7 @@ export function buildPhaseTasks(
           depends_on: dependsOn,
           completedAt: null,
           reason: null,
-          instruction: step.instruction,
+          instruction: resolvedInstruction,
         })
 
         // biome-ignore lint/suspicious/noConsole: intentional CLI output

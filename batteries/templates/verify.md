@@ -168,25 +168,25 @@ phases:
           Then: Mark this task completed via TaskUpdate
 
       - id: review-fixes
-        title: "Review fix changes via REVIEW Protocol"
+        title: "Review fix changes — {reviewers}"
         instruction: |
-          Run the REVIEW Protocol on fix commits made during the VP repair loop.
+          Run all reviewers sequentially on fix commits made during the VP repair loop.
 
-          **Step 1 — Read kata.yaml to discover external reviewers (do this FIRST):**
+          First, identify fix commits from the repair loop:
           ```bash
-          cat .kata/kata.yaml 2>/dev/null || cat .claude/workflows/kata.yaml
+          git log --oneline -20
+          git diff {first-fix-sha}^..HEAD  # full diff of all fix commits
           ```
-          Note: `reviews.code_review` (true/false) and `reviews.code_reviewers` list.
 
-          **Step 2 — Spawn review-agent with verify-fix context:**
+          **Reviewers to run: {reviewers}**
+
+          1. Spawn review-agent:
           ```
           Task(subagent_type="review-agent", prompt="
             Review the fix changes made during VP failure resolution in verify mode.
 
-            First, identify fix commits from the repair loop:
-              git log --oneline -20
-              git show {fix-commit-sha} --stat
-              git diff {first-fix-sha}^..HEAD  (full diff of all fixes)
+            Identify fix commits: git log --oneline -20
+            Review the diff: git diff {first-fix-sha}^..HEAD
 
             This review has a specific focus: HASTY-FIX RISK.
             Fixes made under pressure during verification often introduce regressions.
@@ -208,16 +208,15 @@ phases:
           ")
           ```
 
-          **Step 3 — Run each external provider (if configured):**
-          If `reviews.code_review` is `true` and `reviews.code_reviewers` is non-empty,
-          run each provider in sequence:
+          2. Run each external provider from the task title in sequence:
           ```bash
-          kata review --prompt=code-review --provider={name}
+          # run each `kata review --provider=<name>` listed in the task title
           ```
-          If no reviewers are configured, skip this step.
+
+          Print each result as it completes.
 
           **If REQUEST CHANGES:** Fix the identified issues, commit the corrections, then
-          re-run this review step (restart from Step 1).
+          re-run this review step.
 
           **If APPROVE from all reviewers:** Proceed to P3 Evidence.
           Then: Mark this task completed via TaskUpdate
@@ -413,15 +412,14 @@ specifically targets hasty-fix failure modes rather than general code style.
 
 **Protocol:**
 
-1. **Read kata.yaml** — check `reviews.code_review` and `reviews.code_reviewers`
-2. **Spawn review-agent** — subagent reviews fix diff with hasty-fix criteria:
+1. **Spawn review-agent** — subagent reviews fix diff with hasty-fix criteria:
    - Minimality (no scope creep)
    - Root cause (not symptom masking)
    - Regression risk (no collateral damage to other VP steps)
    - Correctness (logic sound, edge cases handled)
    - Side effects (no unintended state changes)
-3. **External providers** — run `kata review --prompt=code-review --provider=<name>` for each
-   configured reviewer (only if `code_review: true` and `code_reviewers` non-empty)
+2. **External providers** — run `kata review --provider=<name>` for each configured reviewer
+   (pre-expanded into the task title as `{reviewers}` at `kata enter` time)
 
 **If REQUEST CHANGES:** fix the issues, commit, and re-run the review.
 **If APPROVE:** proceed to P3 Evidence.

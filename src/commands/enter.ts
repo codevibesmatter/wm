@@ -631,6 +631,19 @@ export async function enter(args: string[]): Promise<void> {
   // Create workflow directory for state tracking
   const workflowDir = join(dirname(stateFile), 'workflow')
 
+  // Build reviewers string for {reviewers} placeholder in review step titles
+  // Computed here so it can be used by both spec-based and template-only task builders
+  const reviews = config.reviews
+  const externalProviders =
+    reviews?.code_review !== false
+      ? (reviews?.code_reviewers ?? (reviews?.code_reviewer ? [reviews.code_reviewer] : []))
+      : []
+  const reviewerParts = [
+    'review-agent',
+    ...externalProviders.filter(Boolean).map((p) => `kata review --provider=${p}`),
+  ]
+  const reviewers = reviewerParts.join(', ')
+
   // Build tasks (always, even for dry-run — so subjects can be included in output)
   let allTasks: Task[] = []
 
@@ -641,22 +654,10 @@ export async function enter(args: string[]): Promise<void> {
 
     // Create BOTH orchestration tasks (P0, P1, P3, P4, ...) AND spec subphase tasks (P2.X)
     const orchTasks = modeConfig.template
-      ? buildPhaseTasks(modeConfig.template, workflowId, issueNum)
+      ? buildPhaseTasks(modeConfig.template, workflowId, issueNum, reviewers)
       : []
     // Read spec file content for VP extraction (used by {verification_plan} placeholder)
     const specContent = specPath ? readFileSync(specPath, 'utf-8') : undefined
-
-    // Build reviewers string for {reviewers} placeholder in review step titles
-    const reviews = config.reviews
-    const externalProviders =
-      reviews?.code_review !== false
-        ? (reviews?.code_reviewers ?? (reviews?.code_reviewer ? [reviews.code_reviewer] : []))
-        : []
-    const reviewerParts = [
-      'review-agent',
-      ...externalProviders.filter(Boolean).map((p) => `kata review --provider=${p}`),
-    ]
-    const reviewers = reviewerParts.join(', ')
 
     const specTasks = buildSpecTasks(specPhases, issueNum, resolvedSubphasePattern, containerPhaseNum, specContent, reviewers)
 
@@ -692,7 +693,7 @@ export async function enter(args: string[]): Promise<void> {
       })
       allTasks = [...beforeContainer, ...specTasks, ...afterContainer]
     } else if (modeConfig.template) {
-      allTasks = buildPhaseTasks(modeConfig.template, workflowId, issueNum)
+      allTasks = buildPhaseTasks(modeConfig.template, workflowId, issueNum, reviewers)
     }
 
   // Write native task files only on real enter (not dry-run)
