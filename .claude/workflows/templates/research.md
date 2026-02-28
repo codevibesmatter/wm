@@ -100,28 +100,40 @@ phases:
       - id: spawn-explore-parallel
         title: "Spawn parallel Explore agents"
         instruction: |
-          Run multiple agents in parallel for fast codebase coverage:
+          SPAWN 3 parallel Explore agents for fast codebase coverage:
 
+          **Agent 1: Similar implementations**
           Task(subagent_type="Explore", prompt="
-            Find implementations of {topic} in the codebase.
+            Find implementations related to {topic} in the codebase.
             Search with Glob and Grep for relevant files.
             Read the most relevant files IN FULL.
             Document: file paths, function names, key patterns.
             Be thorough — don't just skim.
           ", run_in_background=true)
 
+          **Agent 2: Rules and patterns**
           Task(subagent_type="Explore", prompt="
-            Search .claude/rules/ and docs/ for patterns related to {topic}.
+            Search .claude/rules/, .kata/rules/, and docs/ for patterns
+            related to {topic}.
             List: constraints, best practices, architectural decisions.
             Read relevant rule files IN FULL.
           ", run_in_background=true)
 
-          # Store task IDs for aggregation step below
+          **Agent 3: Recent activity and history**
+          Task(subagent_type="Explore", prompt="
+            Search for recent activity related to {topic}:
+            - git log --oneline -20 to find recent related commits
+            - Search planning/ directory for related specs or research docs
+            - Check for any open GitHub issues: gh issue list --search '{topic}'
+            Extract learnings from past work on this topic.
+          ", run_in_background=true)
+
+          Store all 3 task IDs for aggregation step below.
 
       - id: aggregate-codebase-findings
         title: "Aggregate codebase findings"
         instruction: |
-          Wait for all agents:
+          Wait for all 3 agents:
           TaskOutput(task_id=..., block=true)  # each agent
 
           Compile into structured findings:
@@ -129,6 +141,7 @@ phases:
           - Pattern 1: {description} (source: file:line)
           - Pattern 2: {description} (source: file:line)
           - Existing constraint: {rule or decision}
+          - Recent activity: {relevant commits or past research}
 
           Then: Mark this task completed via TaskUpdate
 
@@ -191,7 +204,7 @@ phases:
       - id: create-research-doc
         title: "Write research findings document"
         instruction: |
-          Read `research_path` from `.claude/workflows/wm.yaml` (default: `planning/research`).
+          Read `research_path` from kata.yaml (default: `planning/research`).
           Create persistent findings doc at:
           `{research_path}/{YYYY-MM-DD}-{slug}.md`
 
@@ -290,7 +303,7 @@ P5: Present (required)     → share results + decide next step
 
 ## Output
 
-- Research doc: `{research_path}/{date}-{slug}.md` (configurable in wm.yaml)
+- Research doc: `{research_path}/{date}-{slug}.md` (configurable in kata.yaml)
 - Structured findings with sources
 - Ranked recommendations
 - Next steps (none, planning, more research)
