@@ -8,10 +8,13 @@
  *   kata postmortem --last --judge             # + LLM judge on eval transcript
  *   kata postmortem --last --judge=gemini      # specific judge provider
  *   kata postmortem --project=/path/to/proj   # sessions from another project
+ *   kata postmortem --transcript=<path> --judge  # judge a specific transcript
+ *   kata postmortem --list-transcripts         # list available eval transcripts
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
+import { homedir } from 'node:os'
 import { findProjectDir, getSessionsDir } from '../session/lookup.js'
 import { readState } from '../state/reader.js'
 import type { SessionState } from '../state/schema.js'
@@ -94,8 +97,73 @@ function shortDate(iso: string | undefined): string {
   })
 }
 
+/**
+ * Resolve path to Claude Code's native conversation transcript for a session.
+ * CC stores transcripts at: ~/.claude/projects/{escaped-project-path}/{session-id}.jsonl
+ * Path escaping: leading '/' dropped, remaining '/' replaced with '-'.
+ */
+function ccTranscriptPath(projectDir: string, sessionId: string): string {
+  const escaped = projectDir.split(sep).join('-')
+  return join(homedir(), '.claude', 'projects', escaped, `${sessionId}.jsonl`)
+}
+
+/**
+ * Summarize a CC native or eval-SDK transcript into compact event lines.
+ * Both formats share message.content arrays — only the outer envelope differs.
+ */
+function summarizeTranscriptFile(transcriptPath: string, maxEvents = 150): string {
+  const raw = readFileSync(transcriptPath, 'utf-8')
+  const lines = raw.trim().split('\n').filter(Boolean)
+  const events: string[] = []
+
+  for (const line of lines) {
+    if (events.length >= maxEvents) break
+    try {
+      const event = JSON.parse(line) as Record<string, unknown>
+      const type = event.type as string | undefined
+      const msg = event.message as { role?: string; content?: unknown[] } | undefined
+
+      // Resolve content array from either format
+      const content: unknown[] | undefined =
+        Array.isArray(msg?.content) ? msg!.content :
+        Array.isArray(event.content) ? event.content as unknown[] :
+        undefined
+
+      if ((type === 'assistant' || msg?.role === 'assistant') && content) {
+        for (const block of content) {
+          const b = block as Record<string, unknown>
+          if (b.type === 'text' && typeof b.text === 'string') {
+            events.push(`[assistant] ${b.text.slice(0, 400)}`)
+          } else if (b.type === 'tool_use' && typeof b.name === 'string') {
+            const input = JSON.stringify(b.input ?? {}).slice(0, 200)
+            events.push(`[tool_use] ${b.name}(${input})`)
+          }
+        }
+      } else if ((type === 'user' || msg?.role === 'user') && content) {
+        for (const block of content) {
+          const b = block as Record<string, unknown>
+          if (b.type === 'tool_result') {
+            const resultText = typeof b.content === 'string' ? b.content :
+              Array.isArray(b.content) ? (b.content[0] as Record<string, unknown>)?.text as string ?? '' : ''
+            events.push(`[tool_result] ${resultText.slice(0, 200)}`)
+          } else if (b.type === 'text' && typeof b.text === 'string') {
+            events.push(`[user] ${b.text.slice(0, 300)}`)
+          }
+        }
+      }
+    } catch {
+      // skip malformed lines
+    }
+  }
+
+  return events.join('\n') || '[empty transcript]'
+}
+
 function extractScore(text: string, label: string): number {
-  const match = text.match(new RegExp(`${label}:\\s*(\\d+)/100`))
+  // Match both "AGENT_SCORE: X/100" and "**Agent Score: X/100**" formats
+  const normalized = label.replace(/_/g, ' ')
+  const pattern = new RegExp(`(?:${label}|\\*{0,2}${normalized}\\*{0,2}):\\s*(\\d+)/100`, 'i')
+  const match = text.match(pattern)
   return match ? parseInt(match[1], 10) : 0
 }
 
@@ -152,7 +220,7 @@ async function listSessions(projectDir: string): Promise<void> {
 async function sessionPostmortem(
   sessionId: string,
   projectDir: string,
-  opts: { judge?: string },
+  opts: { judge?: string; transcript?: string },
 ): Promise<void> {
   const sessions = scanSessions(projectDir)
   const match = sessions.find(s => s.id === sessionId || s.id.startsWith(sessionId))
@@ -302,9 +370,19 @@ async function sessionPostmortem(
     }
   }
 
+  // ─── Transcript Info ────────────────────────────────────────────────────
+  const ccPath = ccTranscriptPath(projectDir, fullId)
+  if (existsSync(ccPath)) {
+    const size = Math.round(statSync(ccPath).size / 1024)
+    // biome-ignore lint/suspicious/noConsole: intentional CLI output
+    console.log(`\n── TRANSCRIPT ${'─'.repeat(56)}`)
+    // biome-ignore lint/suspicious/noConsole: intentional CLI output
+    console.log(`  CC transcript: ${ccPath} (${size}KB)`)
+  }
+
   // ─── LLM Judge ──────────────────────────────────────────────────────────
   if (opts.judge !== undefined) {
-    await runJudge(fullId, projectDir, state, opts.judge)
+    await runJudge(fullId, projectDir, state, opts.judge, opts.transcript)
   }
 
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
@@ -316,34 +394,60 @@ async function runJudge(
   projectDir: string,
   state: SessionState,
   provider: string,
+  explicitTranscript?: string,
 ): Promise<void> {
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
   console.log(`\n── LLM JUDGE ${'─'.repeat(57)}`)
 
-  // Find transcript in eval-transcripts/ by matching session ID prefix
-  const transcriptDir = join(projectDir, 'eval-transcripts')
-  let transcriptPath: string | undefined
+  // Resolve transcript: explicit path > CC native transcript > eval-transcripts scan
+  let transcriptPath: string | undefined = explicitTranscript
+  let transcriptSource = 'explicit'
 
-  if (existsSync(transcriptDir)) {
-    const files = readdirSync(transcriptDir)
-      .filter(f => f.endsWith('.jsonl'))
-      .sort()
-      .reverse() // most recent first
-    const prefix = sessionId.slice(0, 8)
-    const hit = files.find(f => f.includes(prefix))
-    if (hit) transcriptPath = join(transcriptDir, hit)
+  if (!transcriptPath && sessionId !== 'standalone') {
+    // 1. Native CC transcript (primary — always present for real sessions)
+    const ccPath = ccTranscriptPath(projectDir, sessionId)
+    if (existsSync(ccPath)) {
+      transcriptPath = ccPath
+      transcriptSource = 'cc-native'
+    }
+  }
+
+  if (!transcriptPath) {
+    // 2. Scan eval-transcripts/ for a JSONL containing the session ID
+    const transcriptDir = join(projectDir, 'eval-transcripts')
+    if (existsSync(transcriptDir)) {
+      const files = readdirSync(transcriptDir)
+        .filter(f => f.endsWith('.jsonl'))
+        .sort()
+        .reverse()
+      for (const f of files) {
+        const fPath = join(transcriptDir, f)
+        try {
+          const firstLine = readFileSync(fPath, 'utf-8').split('\n')[0]
+          if (firstLine.includes(sessionId)) {
+            transcriptPath = fPath
+            transcriptSource = 'eval'
+            break
+          }
+        } catch {
+          // skip unreadable files
+        }
+      }
+    }
   }
 
   if (!transcriptPath) {
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.log(`  No eval transcript found for session ${sessionId.slice(0, 8)}.`)
+    console.log(`  No transcript found.`)
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.log(`  Transcripts are written when running: npm run eval --scenario=...`)
+    console.log(`  Specify one: kata postmortem --transcript=<path> --judge`)
     return
   }
 
+  const size = Math.round(statSync(transcriptPath).size / 1024)
+  const label = transcriptSource === 'cc-native' ? 'CC native' : transcriptSource === 'eval' ? 'eval harness' : 'explicit'
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
-  console.log(`  Transcript: ${transcriptPath.split('/').slice(-2).join('/')}`)
+  console.log(`  Transcript: ${transcriptPath.split('/').slice(-1)[0]} (${size}KB, ${label})`)
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
   console.log(`  Provider:   ${provider || 'claude'}`)
   // biome-ignore lint/suspicious/noConsole: intentional CLI output
@@ -357,23 +461,31 @@ async function runJudge(
   ].find(p => existsSync(p))
 
   try {
+    // Summarize transcript to avoid E2BIG or context overflow
+    const summary = summarizeTranscriptFile(transcriptPath)
     const result = await runAgentStep(
       {
         provider: provider || 'claude',
         prompt: 'transcript-review',
-        context: ['template', 'transcript'],
+        context: templatePath ? ['template'] : [],
       },
       {
         cwd: projectDir,
         templatePath,
-        transcriptPath,
+        extraContext: `## Session Transcript (summarized)\n\n\`\`\`\n${summary}\n\`\`\``,
       },
     )
 
     const agentScore = extractScore(result.output, 'AGENT_SCORE')
     const systemScore = extractScore(result.output, 'SYSTEM_SCORE')
-    const verdictMatch = result.output.match(/VERDICT:\s*(PASS|FAIL_AGENT|FAIL_SYSTEM|FAIL_BOTH)/)
-    const verdict = verdictMatch?.[1] ?? (agentScore >= 75 && systemScore >= 75 ? 'PASS' : 'FAIL')
+    // Match "VERDICT: PASS", "FAIL (agent)", "[x] PASS", or derive from scores
+    const verdictMatch = result.output.match(
+      /VERDICT:\s*(PASS|FAIL[_\s]\w+)|\[x\]\s*\*\*(PASS|FAIL[^*]+)\*\*/i
+    )
+    const rawVerdict = verdictMatch?.[1] ?? verdictMatch?.[2] ?? ''
+    const verdict = rawVerdict
+      ? rawVerdict.replace(/\s+/g, '_').toUpperCase()
+      : agentScore >= 75 && systemScore >= 75 ? 'PASS' : 'FAIL'
 
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
     console.log(`\n  Agent score:  ${agentScore}/100`)
@@ -384,9 +496,9 @@ async function runJudge(
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
     console.log(`  Model:        ${result.model ?? '—'}`)
 
-    const excerpt = result.output.slice(0, 600).replace(/\n/g, '\n  ')
+    const review = result.output.replace(/\n/g, '\n  ')
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
-    console.log(`\n  Review:\n  ${excerpt}${result.output.length > 600 ? '\n  …(truncated)' : ''}`)
+    console.log(`\n  Review:\n  ${review}`)
   } catch (e) {
     // biome-ignore lint/suspicious/noConsole: intentional CLI output
     console.error(`  Judge error: ${e instanceof Error ? e.message : String(e)}`)
@@ -406,12 +518,52 @@ export async function postmortem(args: string[]): Promise<void> {
       ? judgeArg.split('=')[1]
       : 'claude'
     : undefined
+  const transcriptArg = args.find(a => a.startsWith('--transcript='))?.split('=').slice(1).join('=')
+
+  // --list-transcripts: show available eval transcripts
+  if (args.includes('--list-transcripts')) {
+    const transcriptDir = join(projectDir, 'eval-transcripts')
+    if (!existsSync(transcriptDir)) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.log('No eval-transcripts/ directory found.')
+      return
+    }
+    const files = readdirSync(transcriptDir)
+      .filter(f => f.endsWith('.jsonl'))
+      .sort()
+      .reverse()
+    // biome-ignore lint/suspicious/noConsole: intentional CLI output
+    console.log(`Eval transcripts in ${transcriptDir}:\n`)
+    for (const f of files) {
+      const size = Math.round(statSync(join(transcriptDir, f)).size / 1024)
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.log(`  ${f.padEnd(60)} ${size}KB`)
+    }
+    return
+  }
+
+  // --transcript --judge: standalone judge on a specific transcript (no session needed)
+  if (transcriptArg && judgeProvider !== undefined) {
+    const resolvedPath = transcriptArg.startsWith('/')
+      ? transcriptArg
+      : join(projectDir, transcriptArg)
+    if (!existsSync(resolvedPath)) {
+      // biome-ignore lint/suspicious/noConsole: intentional CLI output
+      console.error(`Transcript not found: ${resolvedPath}`)
+      process.exitCode = 1
+      return
+    }
+    // Run judge standalone — create a minimal synthetic state
+    const syntheticState: Partial<SessionState> = { currentMode: 'task' }
+    await runJudge('standalone', projectDir, syntheticState as SessionState, judgeProvider, resolvedPath)
+    return
+  }
 
   // First non-flag arg is session-id or prefix
   const sessionIdArg = args.find(a => !a.startsWith('--'))
 
   if (sessionIdArg) {
-    await sessionPostmortem(sessionIdArg, projectDir, { judge: judgeProvider })
+    await sessionPostmortem(sessionIdArg, projectDir, { judge: judgeProvider, transcript: transcriptArg })
     return
   }
 
@@ -422,7 +574,7 @@ export async function postmortem(args: string[]): Promise<void> {
       console.log('No sessions found.')
       return
     }
-    await sessionPostmortem(sessions[0].id, projectDir, { judge: judgeProvider })
+    await sessionPostmortem(sessions[0].id, projectDir, { judge: judgeProvider, transcript: transcriptArg })
     return
   }
 
