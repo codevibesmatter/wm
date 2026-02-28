@@ -1,0 +1,26 @@
+{
+  "sessionId": "ee52c69a-4192-445f-982e-63840744a6bc",
+  "workflowId": "FF-ee52-0224",
+  "sessionType": "freeform",
+  "currentMode": "freeform",
+  "completedPhases": [],
+  "template": "freeform.md",
+  "phases": [],
+  "modeHistory": [
+    {
+      "mode": "freeform",
+      "enteredAt": "2026-02-24T20:35:34.205Z"
+    }
+  ],
+  "modeState": {
+    "freeform": {
+      "status": "active",
+      "enteredAt": "2026-02-24T20:35:34.205Z"
+    }
+  },
+  "updatedAt": "2026-02-24T20:35:34.205Z",
+  "beadsCreated": [],
+  "editedFiles": [],
+  "todosWritten": false,
+  "workflowDir": "/data/projects/kata-wm/.claude/sessions/ee52c69a-4192-445f-982e-63840744a6bc/workflow"
+}

@@ -1,0 +1,462 @@
+# Mode definitions for Baseplane workflow system
+# This is the single source of truth for all mode metadata.
+# Hooks and scripts read from this file to generate suggestions and validate modes.
+
+modes:
+  # --- Planning Modes ---
+  planning:
+    name: "Planning"
+    description: "Research → spec → review → approved"
+    intent_keywords:
+      - "plan feature"
+      - "spec"
+      - "design"
+      - "write spec"
+    strong_signals:
+      - "planning mode"
+      - "enter planning"
+      - "start planning"
+      - "plan feature"
+      - "write a spec"
+    template: "planning-feature.md"
+    category: planning
+    behavior:
+      bias: "act"
+      entry_actions:
+        - check: "issue number in message"
+          then: "enter mode with that issue"
+        - check: "research doc mentioned"
+          then: "read research doc, create issue from title, enter mode"
+        - check: "no issue and no research"
+          then: "create issue from inferred title, enter mode"
+      context_signals:
+        - pattern: "planning/research/*.md mentioned"
+          inference: "Research complete, ready for planning"
+          action: "read research doc, extract title, create issue, enter planning"
+        - pattern: "planning/specs/*.md exists for topic"
+          inference: "Spec already exists"
+          action: "suggest implementation mode instead"
+        - pattern: "GH#NNN or issue NNN in message"
+          inference: "Issue already exists"
+          action: "use that issue number"
+      never_ask:
+        - question: "Do you have an issue number?"
+          instead: "Create one if missing"
+        - question: "Would you like me to read the research?"
+          instead: "Just read it"
+        - question: "Which option would you like?"
+          instead: "Pick the obvious one"
+        - question: "Should I create an issue?"
+          instead: "Yes, always create if missing"
+      ok_to_ask:
+        - "Ambiguous scope (multiple possible features)"
+        - "Conflicting signals (research says X, user says Y)"
+        - "Destructive action (overwrite existing spec)"
+
+  strategic:
+    name: "Strategic Planning"
+    description: "OKRs, epics, roadmap, big picture"
+    intent_keywords:
+      - "plan epic"
+      - "roadmap"
+      - "milestone"
+      - "initiative"
+      - "strategic"
+      - "big picture"
+      - "OKRs"
+    template: "management.md"  # Uses management template
+    category: management  # Strategic is management-level work
+
+  # --- Doctrine Mode ---
+  doctrine:
+    name: "Doctrine"
+    description: "Deep interview-style work on docs/theory and docs/patterns"
+    intent_keywords:
+      - "doctrine"
+      - "theory doc"
+      - "patterns doc"
+      - "knowledge architecture"
+      - "refine theory"
+      - "refine patterns"
+      - "review doctrine"
+    strong_signals:
+      - "doctrine mode"
+      - "enter doctrine"
+      - "work on theory"
+      - "work on patterns"
+      - "review theory"
+      - "review patterns"
+    template: "doctrine.md"
+    workflow_prefix: "DC"
+    category: planning
+    aliases:
+      - "theory"
+      - "patterns"
+      - "knowledge"
+    behavior:
+      bias: "act"
+      entry_actions:
+        - check: "doc path mentioned"
+          then: "enter doctrine with that doc"
+        - check: "layer mentioned (theory/patterns)"
+          then: "enter doctrine with that layer"
+        - check: "no specifics"
+          then: "enter doctrine, ask at P0"
+      never_ask:
+        - question: "Do you want doctrine mode?"
+          instead: "Just enter it"
+        - question: "Should I read the docs first?"
+          instead: "Yes, always read"
+      ok_to_ask:
+        - "Multiple docs could be the target"
+        - "Unclear whether theory or patterns layer"
+
+  # --- Feature Clarification Mode ---
+  feature-clarification:
+    name: "Feature Clarification"
+    description: "Deep UI and behavior clarification for existing feature docs"
+    intent_keywords:
+      - "clarify feature"
+      - "refine doc"
+      - "behavior interview"
+      - "ui interview"
+      - "clarify behaviors"
+      - "feature interview"
+    template: "feature-clarification.md"
+    workflow_prefix: "FC"
+    category: planning
+    aliases:
+      - "clarify"
+      - "fc"
+
+  # --- Lightweight Planning Mode ---
+  micro-planning:
+    name: "Micro-Planning"
+    description: "Lightweight planning for tasks/chores: context → quick spec (10-15 min)"
+    intent_keywords:
+      - "quick plan"
+      - "micro plan"
+      - "plan task"
+      - "plan chore"
+    template: "micro-planning.md"
+    workflow_prefix: "MP"
+    category: planning
+    aliases:
+      - "micro"
+      - "mp"
+      - "quick"
+
+  # --- Task Mode (combined planning + implementation) ---
+  task:
+    name: "Task"
+    description: "Combined planning + implementation for small tasks and chores"
+    intent_keywords:
+      - "task:"       # task: prefix triggers this mode
+      - "chore"
+      - "small task"
+      - "quick change"
+      - "cleanup"
+      - "refactor"
+    template: "task.md"
+    workflow_prefix: "TK"
+    category: implementation
+    aliases:
+      - "chore"
+      - "small"
+    behavior:
+      bias: "act"
+      entry_actions:
+        - check: "task: or chore: prefix"
+          then: "enter task mode immediately, no issue needed"
+        - check: "issue number provided"
+          then: "link to that issue, enter task mode"
+        - check: "no issue and clear scope"
+          then: "just do it, issue optional for small tasks"
+      never_ask:
+        - question: "Should I create an issue?"
+          instead: "Skip for small tasks, just do the work"
+        - question: "Do you want me to plan this first?"
+          instead: "Task mode combines planning + implementation"
+        - question: "Which approach would you prefer?"
+          instead: "Pick the obvious simple approach"
+      ok_to_ask:
+        - "Scope unclear (task seems larger than expected)"
+        - "Multiple valid approaches with real tradeoffs"
+
+  # --- Implementation Modes ---
+  implementation:
+    name: "Implementation"
+    description: "Execute approved specs - phases defined in spec YAML frontmatter"
+    intent_keywords:
+      - "implement"
+      - "build"
+      - "code"
+      - "develop"
+      - "execute spec"
+    strong_signals:
+      - "implementation mode"
+      - "implement issue"
+      - "implement #"
+      - "start implementing"
+      - "build feature"
+      - "impl"
+    template: "implementation-feature.md"
+    category: implementation
+    behavior:
+      bias: "act"
+      entry_actions:
+        - check: "issue number provided"
+          then: "enter mode with that issue"
+        - check: "spec file mentioned"
+          then: "extract issue from spec path, enter mode"
+        - check: "recent planning session"
+          then: "use issue from that session"
+      context_signals:
+        - pattern: "planning/specs/NNN-*.md exists"
+          inference: "Spec ready for implementation"
+          action: "enter implementation with that issue"
+        - pattern: "no spec exists for issue"
+          inference: "Need planning first"
+          action: "suggest planning mode instead"
+      never_ask:
+        - question: "Which issue?"
+          instead: "Use most recently planned, or infer from context"
+        - question: "Are you sure you want to implement?"
+          instead: "Yes, that's why they said implement"
+        - question: "Should I read the spec first?"
+          instead: "Yes, always read the spec"
+      ok_to_ask:
+        - "Multiple specs match the topic"
+        - "Spec is marked draft/incomplete"
+
+  # Note: "bug:" prefix triggers bugfix with micro-planning
+  bugfix:
+    name: "Bug Fix"
+    description: "Fix bugs with built-in investigation phase"
+    intent_keywords:
+      - "fix bug"
+      - "bugfix"
+      - "fix issue"
+      - "resolve bug"
+      - "bug:"       # bug: prefix triggers this mode
+    strong_signals:
+      - "bug:"
+      - "fix the bug"
+      - "this is broken"
+      - "bugfix mode"
+    template: "implementation-bugfix.md"
+    micro_planning: true  # Automatically runs context search
+    category: implementation
+    behavior:
+      bias: "act"
+      entry_actions:
+        - check: "issue number provided"
+          then: "enter bugfix with that issue"
+        - check: "bug description clear"
+          then: "create bug issue automatically, enter mode"
+        - check: "error message provided"
+          then: "create bug issue with error in title, enter mode"
+      never_ask:
+        - question: "Is this a bug or feature?"
+          instead: "If they said bug/fix/broken, it's a bug"
+        - question: "Do you want me to create an issue?"
+          instead: "Yes, create it"
+        - question: "Can you describe the bug?"
+          instead: "Use what they already said"
+      ok_to_ask:
+        - "Can't reproduce from description"
+        - "Multiple possible bugs mentioned"
+
+  hotfix:
+    name: "Hotfix"
+    description: "Production emergency fix"
+    intent_keywords:
+      - "hotfix"
+      - "production issue"
+      - "urgent fix"
+      - "emergency"
+    template: "implementation-hotfix.md"
+    category: implementation
+
+  # --- Investigation Modes ---
+  debug:
+    name: "Debug"
+    description: "Investigation only (no fix)"
+    intent_keywords:
+      - "debug"
+      - "investigate"
+      - "trace"
+      - "diagnose"
+    template: "debug.md"
+    category: investigation
+
+  research:
+    name: "Research"
+    description: "Explore → synthesize findings"
+    intent_keywords:
+      - "research"
+      - "explore"
+      - "learn about"
+    strong_signals:
+      - "research mode"
+      - "let's research"
+      - "explore options"
+      - "investigate how"
+    template: "research.md"
+    category: investigation
+    behavior:
+      bias: "act"
+      entry_actions:
+        - check: "topic clear"
+          then: "enter research mode, create research doc"
+        - check: "related to existing issue"
+          then: "link research to that issue"
+      never_ask:
+        - question: "What do you want to research?"
+          instead: "Infer topic from message"
+        - question: "Should I create a research doc?"
+          instead: "Yes, always create one"
+      ok_to_ask:
+        - "Multiple possible research directions"
+
+  freeform:
+    name: "Freeform"
+    description: "Quick questions & discussion (no phases)"
+    intent_keywords:
+      - "question"
+      - "how does"
+      - "what is"
+      - "where is"
+      - "explain"
+      - "help me understand"
+      - "understand"
+    strong_signals:
+      - "quick question"
+      - "just wondering"
+      - "can you explain"
+      - "freeform"
+    template: "freeform.md"
+    workflow_prefix: "FF"
+    category: investigation
+    aliases:
+      - "question"
+      - "ask"
+      - "help"
+      - "qa"  # Keep qa as alias for backwards compatibility
+    behavior:
+      bias: "act"
+      entry_actions:
+        - check: "always"
+          then: "enter freeform immediately, no issue needed"
+      never_ask:
+        - question: "Do you want freeform mode?"
+          instead: "Just enter it"
+        - question: "Should I create an issue?"
+          instead: "No, freeform doesn't need issues"
+        - question: "Would you like me to..."
+          instead: "Just do it"
+      ok_to_ask:
+        - "Genuinely ambiguous request"
+
+  # --- Management Modes ---
+  management:
+    name: "Management"
+    description: "Advisory and oversight"
+    intent_keywords:
+      - "review project"
+      - "status"
+      - "health check"
+      - "weekly review"
+    template: "management.md"
+    category: management
+    aliases:
+      - "strategy"
+      - "review"
+      - "weekly-review"
+
+  # --- Special Modes ---
+  orchestrator:
+    name: "Orchestrator"
+    description: "Multi-agent coordination via CC Gateway"
+    intent_keywords:
+      - "orchestrate"
+      - "multi-agent"
+      - "coordinate"
+      - "cc gateway"
+      - "spawn sessions"
+      - "fan-out"
+      - "cascade"
+    template: "orchestrator.md"
+    category: special
+
+  dedicated-testing:
+    name: "Dedicated Testing"
+    description: "Comprehensive QA session"
+    intent_keywords:
+      - "test session"
+      - "qa session"
+      - "testing"
+    template: "implementation-testing.md"
+    category: special
+
+  flow:
+    name: "Flow State (DEPRECATED)"
+    description: "(DEPRECATED) Use freeform mode instead"
+    intent_keywords:
+      - "quick task"
+      - "simple"
+      - "quick fix"
+      - "minor change"
+    template: "freeform.md"  # Redirects to freeform
+    deprecated: true
+    redirect_to: "freeform"
+    category: special
+    aliases:
+      - "flow-state"
+      - "quick"
+
+# Red flags - patterns that indicate mode rules are being violated
+red_flags:
+  - pattern: "This is simple, I don't need a mode"
+    correction: "Enter mode anyway"
+  - pattern: "I'll just answer quickly"
+    correction: "Mode first"
+  - pattern: "The user didn't ask for a mode"
+    correction: "YOU decide based on intent"
+
+# Categories for grouping in UI/docs
+categories:
+  planning:
+    name: "Planning"
+    description: "Spec creation and task breakdown"
+  implementation:
+    name: "Implementation"
+    description: "Code execution from specs"
+  investigation:
+    name: "Investigation"
+    description: "Research and debugging"
+  management:
+    name: "Management"
+    description: "Project oversight"
+  special:
+    name: "Special"
+    description: "Specialized workflows"
+
+# Global behavioral rules - apply across all modes
+global_behavior:
+  never_ask_globally:
+    - "Are you sure?"
+    - "Would you like me to..."
+    - "Which option would you prefer?"
+    - "Should I proceed?"
+    - "Do you want me to..."
+  ask_when:
+    - "Genuinely ambiguous (multiple valid interpretations)"
+    - "Destructive action (delete, overwrite, force push)"
+    - "External side effects (email, deploy to prod)"
+    - "Conflicting instructions"
+  inference:
+    title_from_research_doc: "Extract from # heading"
+    title_from_message: "Extract noun phrase after plan/implement/fix"
+    issue_from_message: "Look for #NNN, GH#NNN, issue NNN"
+    issue_from_spec_path: "Extract from planning/specs/NNN-*.md"

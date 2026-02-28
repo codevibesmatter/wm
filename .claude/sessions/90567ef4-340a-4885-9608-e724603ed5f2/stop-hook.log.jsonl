@@ -1,0 +1,11 @@
+{"ts":"2026-02-27T14:48:59.754Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-27T14:52:50.827Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-27T15:04:49.632Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-27T15:06:33.496Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-27T15:13:28.309Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-27T15:14:33.795Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-27T15:26:56.184Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-27T15:27:53.206Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-27T15:42:21.042Z","decision":"block","reasons":["Unpushed commits"]}
+{"ts":"2026-02-27T15:42:30.570Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-27T15:44:32.763Z","decision":"allow","reasons":[],"note":"all conditions met"}

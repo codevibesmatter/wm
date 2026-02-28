@@ -1,0 +1,33 @@
+{
+  "sessionId": "adbf3654-b0df-4abc-9e7b-782fbf575b0a",
+  "workflowId": "RE-adbf-0221",
+  "sessionType": "research",
+  "currentMode": "research",
+  "currentPhase": "p0",
+  "completedPhases": [],
+  "template": "research.md",
+  "phases": [
+    "p0",
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+  ],
+  "modeHistory": [
+    {
+      "mode": "research",
+      "enteredAt": "2026-02-21T15:17:06.385Z"
+    }
+  ],
+  "modeState": {
+    "research": {
+      "status": "active",
+      "enteredAt": "2026-02-21T15:17:06.385Z"
+    }
+  },
+  "updatedAt": "2026-02-21T15:17:06.385Z",
+  "beadsCreated": [],
+  "editedFiles": [],
+  "workflowDir": "/data/projects/kata-wm/.claude/sessions/adbf3654-b0df-4abc-9e7b-782fbf575b0a/workflow"
+}

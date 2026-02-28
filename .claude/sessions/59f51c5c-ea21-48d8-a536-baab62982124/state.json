@@ -1,0 +1,35 @@
+{
+  "sessionId": "59f51c5c-ea21-48d8-a536-baab62982124",
+  "workflowId": "GH#30",
+  "issueNumber": 30,
+  "sessionType": "implementation",
+  "currentMode": "implementation",
+  "currentPhase": "p1",
+  "completedPhases": [],
+  "template": "implementation.md",
+  "phases": [
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+  ],
+  "modeHistory": [
+    {
+      "mode": "implementation",
+      "enteredAt": "2026-02-27T15:45:05.378Z"
+    }
+  ],
+  "modeState": {
+    "implementation": {
+      "status": "active",
+      "enteredAt": "2026-02-27T15:45:05.378Z"
+    }
+  },
+  "updatedAt": "2026-02-27T15:45:05.378Z",
+  "beadsCreated": [],
+  "editedFiles": [],
+  "todosWritten": false,
+  "specPath": "/data/projects/kata-wm/planning/specs/30-unified-kata-yaml.md",
+  "workflowDir": "/data/projects/kata-wm/.claude/sessions/59f51c5c-ea21-48d8-a536-baab62982124/workflow"
+}

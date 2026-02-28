@@ -1,0 +1,57 @@
+{
+  "sessionId": "35f49a46-b49e-4eca-8885-844e4c24b638",
+  "workflowId": "GH#20",
+  "issueNumber": 20,
+  "sessionType": "default",
+  "currentMode": "default",
+  "previousMode": "implementation",
+  "completedPhases": [],
+  "template": "implementation.md",
+  "phases": [
+    "p0",
+    "p1",
+    "p2",
+    "p3"
+  ],
+  "modeHistory": [
+    {
+      "mode": "freeform",
+      "enteredAt": "2026-02-25T14:05:52.118Z"
+    },
+    {
+      "mode": "planning",
+      "enteredAt": "2026-02-25T14:11:01.397Z"
+    },
+    {
+      "mode": "implementation",
+      "enteredAt": "2026-02-25T14:24:40.437Z",
+      "exitedAt": "2026-02-25T15:16:15.299Z"
+    },
+    {
+      "mode": "implementation",
+      "enteredAt": "2026-02-25T15:28:28.210Z",
+      "exitedAt": "2026-02-25T16:51:05.130Z"
+    }
+  ],
+  "modeState": {
+    "freeform": {
+      "status": "active",
+      "enteredAt": "2026-02-25T14:05:52.118Z"
+    },
+    "planning": {
+      "status": "active",
+      "enteredAt": "2026-02-25T14:11:01.397Z"
+    },
+    "implementation": {
+      "status": "completed",
+      "enteredAt": "2026-02-25T15:28:28.210Z",
+      "exitedAt": "2026-02-25T16:51:05.130Z"
+    }
+  },
+  "updatedAt": "2026-02-25T16:51:05.130Z",
+  "workflowCompletedAt": "2026-02-25T16:51:05.130Z",
+  "beadsCreated": [],
+  "editedFiles": [],
+  "todosWritten": false,
+  "workflowDir": "/data/projects/kata-wm/.claude/sessions/35f49a46-b49e-4eca-8885-844e4c24b638/workflow"
+}

@@ -1,0 +1,33 @@
+{
+  "sessionId": "3b15d677-89f9-4a9c-9547-333282b3f295",
+  "workflowId": "GH#2",
+  "issueNumber": 2,
+  "sessionType": "planning",
+  "currentMode": "planning",
+  "currentPhase": "p0",
+  "completedPhases": [],
+  "template": "planning.md",
+  "phases": [
+    "p0",
+    "p1",
+    "p2",
+    "p3"
+  ],
+  "modeHistory": [
+    {
+      "mode": "planning",
+      "enteredAt": "2026-02-20T23:14:23.006Z"
+    }
+  ],
+  "modeState": {
+    "planning": {
+      "status": "active",
+      "enteredAt": "2026-02-20T23:14:23.006Z"
+    }
+  },
+  "updatedAt": "2026-02-20T23:14:23.006Z",
+  "beadsCreated": [],
+  "editedFiles": [],
+  "todosWritten": false,
+  "workflowDir": "/data/projects/kata-wm/.claude/sessions/3b15d677-89f9-4a9c-9547-333282b3f295/workflow"
+}

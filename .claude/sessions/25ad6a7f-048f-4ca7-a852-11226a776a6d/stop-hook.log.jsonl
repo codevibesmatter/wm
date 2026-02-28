@@ -1,0 +1,13 @@
+{"ts":"2026-02-27T19:15:49.668Z","decision":"block","reasons":["Uncommitted changes in tracked files"]}
+{"ts":"2026-02-27T19:16:00.844Z","decision":"block","reasons":["Uncommitted changes in tracked files"]}
+{"ts":"2026-02-27T19:18:16.723Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-27T19:19:08.481Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-27T19:33:51.824Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-27T19:39:39.338Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-27T19:41:22.641Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-27T19:46:32.020Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-27T21:59:02.216Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-27T22:06:52.527Z","decision":"block","reasons":["Unpushed commits"]}
+{"ts":"2026-02-27T22:07:08.247Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-27T22:09:40.822Z","decision":"block","reasons":["Uncommitted changes in tracked files"]}
+{"ts":"2026-02-27T22:37:40.249Z","decision":"allow","reasons":[],"note":"all conditions met"}

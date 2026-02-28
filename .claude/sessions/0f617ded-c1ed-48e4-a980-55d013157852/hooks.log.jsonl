@@ -1,0 +1,188 @@
+{"hook":"session-start","decision":"context","source":"clear","ts":"2026-02-25T16:59:28.117Z"}
+{"hook":"user-prompt","decision":"context","suggested_mode":"planning","ts":"2026-02-25T16:59:41.711Z"}
+{"hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode","ts":"2026-02-25T16:59:43.056Z"}
+{"hook":"user-prompt","decision":"context","suggested_mode":"planning","ts":"2026-02-25T16:59:46.627Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T16:59:53.989Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T16:59:58.382Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T16:59:58.907Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T16:59:59.463Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:00:03.704Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:00:14.845Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:00:15.464Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:00:19.301Z"}
+{"hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode","ts":"2026-02-25T17:00:30.797Z"}
+{"hook":"user-prompt","decision":"context","active_mode":"freeform","ts":"2026-02-25T17:02:18.315Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:02:25.963Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:02:25.972Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:02:34.113Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:02:38.769Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:02:43.537Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:02:48.382Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskList","ts":"2026-02-25T17:03:24.244Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:03:28.469Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:03:28.479Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:03:39.934Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:03:39.951Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:03:40.275Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:03:40.276Z"}
+{"hook":"task-deps","decision":"deny","task":"2","blocked_by":["1"],"ts":"2026-02-25T17:03:40.310Z"}
+{"hook":"task-deps","decision":"deny","task":"3","blocked_by":["2"],"ts":"2026-02-25T17:03:40.609Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:03:40.611Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:03:40.617Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:03:41.045Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:03:41.047Z"}
+{"hook":"task-deps","decision":"allow","task":"2","ts":"2026-02-25T17:03:44.851Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:03:44.856Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:03:44.858Z"}
+{"hook":"task-deps","decision":"allow","task":"3","ts":"2026-02-25T17:03:48.599Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:03:48.602Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:03:48.604Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:03:52.130Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:03:52.134Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:03:53.521Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:03:58.496Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:03:59.856Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Edit","ts":"2026-02-25T17:04:30.821Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:04:32.508Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Edit","ts":"2026-02-25T17:04:48.437Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Edit","ts":"2026-02-25T17:05:20.126Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:05:24.376Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:05:32.487Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:05:33.976Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:05:39.935Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Write","ts":"2026-02-25T17:05:46.119Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:05:50.585Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:05:55.044Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:06:03.535Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":true,"ts":"2026-02-25T17:06:07.752Z"}
+{"hook":"task-deps","decision":"allow","task":"4","ts":"2026-02-25T17:06:07.754Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:06:07.761Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:06:12.581Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":true,"ts":"2026-02-25T17:06:12.584Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:06:16.307Z"}
+{"hook":"task-deps","decision":"allow","task":"5","ts":"2026-02-25T17:06:16.311Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":true,"ts":"2026-02-25T17:06:16.322Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":true,"ts":"2026-02-25T17:06:20.490Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:06:20.491Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:06:24.842Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:06:25.406Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:06:25.915Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:06:35.113Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["2 task(s) still pending","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:06:36.630Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:06:40.674Z"}
+{"hook":"task-deps","decision":"allow","task":"6","ts":"2026-02-25T17:06:40.676Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:06:40.689Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:06:44.449Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:06:44.473Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:06:48.492Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["1 task(s) still pending","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:06:50.796Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:06:54.504Z"}
+{"hook":"task-deps","decision":"allow","task":"7","ts":"2026-02-25T17:06:54.507Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:06:54.519Z"}
+{"hook":"stop-conditions","decision":"allow","note":"all conditions met","ts":"2026-02-25T17:06:55.979Z"}
+{"hook":"user-prompt","decision":"context","active_mode":"task","ts":"2026-02-25T17:12:14.829Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:12:25.994Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["Uncommitted changes in tracked files"],"ts":"2026-02-25T17:12:31.586Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:12:35.715Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:12:40.827Z"}
+{"hook":"stop-conditions","decision":"allow","note":"all conditions met","ts":"2026-02-25T17:12:45.252Z"}
+{"hook":"user-prompt","decision":"context","active_mode":"task","ts":"2026-02-25T17:23:22.649Z"}
+{"hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode","ts":"2026-02-25T17:23:40.245Z"}
+{"hook":"user-prompt","decision":"context","active_mode":"freeform","ts":"2026-02-25T17:24:46.789Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Task","ts":"2026-02-25T17:25:04.067Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Glob","ts":"2026-02-25T17:25:06.408Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Glob","ts":"2026-02-25T17:25:06.575Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Glob","ts":"2026-02-25T17:25:06.747Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Glob","ts":"2026-02-25T17:25:06.896Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:07.117Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:10.423Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:10.662Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:10.873Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:11.174Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:14.220Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:14.533Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:14.680Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Glob","ts":"2026-02-25T17:25:17.664Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Glob","ts":"2026-02-25T17:25:17.902Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:18.221Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:20.540Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:20.711Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:20.951Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Grep","ts":"2026-02-25T17:25:24.470Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:24.671Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:24.984Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:27.668Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:27.877Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Grep","ts":"2026-02-25T17:25:28.629Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:31.800Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:32.089Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:35.240Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:35.512Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:35.718Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Glob","ts":"2026-02-25T17:25:38.156Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:38.605Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:41.038Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Grep","ts":"2026-02-25T17:25:41.658Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:44.418Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:44.653Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:25:47.183Z"}
+{"hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode","ts":"2026-02-25T17:26:25.792Z"}
+{"hook":"user-prompt","decision":"context","active_mode":"freeform","ts":"2026-02-25T17:26:40.143Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:26:54.312Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:26:54.980Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:26:55.202Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:26:59.741Z"}
+{"hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode","ts":"2026-02-25T17:27:01.198Z"}
+{"hook":"user-prompt","decision":"context","active_mode":"freeform","ts":"2026-02-25T17:29:31.797Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskList","ts":"2026-02-25T17:29:47.725Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:29:51.478Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:29:51.497Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-25T17:29:55.383Z"}
+{"hook":"task-deps","decision":"allow","task":"2","ts":"2026-02-25T17:30:00.631Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:30:00.632Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:30:00.634Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:30:04.560Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:30:04.563Z"}
+{"hook":"task-deps","decision":"allow","task":"3","ts":"2026-02-25T17:30:04.563Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:30:06.031Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:30:10.225Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:30:10.236Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Edit","ts":"2026-02-25T17:30:15.723Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Edit","ts":"2026-02-25T17:30:18.214Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:30:19.640Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:30:21.059Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Edit","ts":"2026-02-25T17:31:02.209Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:31:03.684Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:31:05.101Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:31:06.602Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["4 task(s) still pending","  - [4] TK-0f61-0225: Implement: Make the changes","  - [5] TK-0f61-0225: Implement: Verify after each logical change","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:31:09.124Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Edit","ts":"2026-02-25T17:31:15.282Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Edit","ts":"2026-02-25T17:31:26.903Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:31:31.677Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:31:32.878Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:31:41.634Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Write","ts":"2026-02-25T17:31:49.794Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:31:54.027Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:31:58.291Z"}
+{"hook":"task-deps","decision":"allow","task":"4","ts":"2026-02-25T17:31:58.292Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":true,"ts":"2026-02-25T17:31:58.295Z"}
+{"hook":"task-deps","decision":"allow","task":"5","ts":"2026-02-25T17:32:02.360Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:32:02.364Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":true,"ts":"2026-02-25T17:32:02.370Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:32:06.540Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["2 task(s) still pending","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:32:08.142Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:32:16.387Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["2 task(s) still pending","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:32:23.605Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["2 task(s) still pending","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:32:25.115Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["2 task(s) still pending","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:32:26.708Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["2 task(s) still pending","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:32:28.251Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["2 task(s) still pending","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:32:29.753Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-25T17:32:34.882Z"}
+{"hook":"stop-conditions","decision":"block","reasons":["2 task(s) still pending","  - [6] TK-0f61-0225: Complete: Final verification","  - [7] TK-0f61-0225: Complete: Commit, push, close issue"],"ts":"2026-02-25T17:32:38.977Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:32:42.624Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:32:42.635Z"}
+{"hook":"task-deps","decision":"allow","task":"6","ts":"2026-02-25T17:32:42.636Z"}
+{"hook":"task-deps","decision":"allow","task":"7","ts":"2026-02-25T17:32:46.407Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskUpdate","ts":"2026-02-25T17:32:46.407Z"}
+{"hook":"task-evidence","decision":"allow","uncommitted":false,"ts":"2026-02-25T17:32:46.411Z"}
+{"hook":"stop-conditions","decision":"allow","note":"all conditions met","ts":"2026-02-25T17:32:55.621Z"}

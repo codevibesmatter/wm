@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+#
+# wm - Workflow Management CLI
+#
+# Type-safe state management for Claude Code workflow sessions.
+# Runs via Bun (no build needed).
+#
+# Usage:
+#   wm enter <mode>                 Enter a mode (creates phase tasks)
+#   wm status [--json]              Show current mode and phase
+#   wm exit                         Exit current mode
+#   wm can-exit                     Check if exit conditions met
+#   wm prime                        Output context injection block
+#   wm help                         Show help
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Run TypeScript directly with Bun (no build step needed)
+CLI_TS="$SCRIPT_DIR/src/index.ts"
+
+# Check if Bun is available
+check_bun() {
+  # Try common bun locations if not in PATH
+  if ! command -v bun &> /dev/null; then
+    if [[ -x "$HOME/.bun/bin/bun" ]]; then
+      export PATH="$HOME/.bun/bin:$PATH"
+    else
+      echo "Error: Bun not found. Install: https://bun.sh" >&2
+      exit 1
+    fi
+  fi
+}
+
+# Main entry point
+main() {
+  check_bun
+  bun "$CLI_TS" "$@"
+}
+
+main "$@"

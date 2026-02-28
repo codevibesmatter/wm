@@ -1,0 +1,25 @@
+{"ts":"2026-02-25T14:04:01.542Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-25T14:05:36.951Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-25T14:07:16.385Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-25T14:08:39.946Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-25T14:10:25.240Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-25T14:23:03.139Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-25T14:35:47.274Z","decision":"block","reasons":["verify-phase has not been run. Run: kata verify-phase <phaseId> --issue=18"]}
+{"ts":"2026-02-25T14:36:00.395Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-25T14:39:24.311Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-25T14:41:46.885Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-25T14:44:31.284Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-25T15:12:16.091Z","decision":"block","reasons":["Phase p1 verify-phase evidence is stale (predates latest commit). Re-run: kata verify-phase p1 --issue=18"]}
+{"ts":"2026-02-25T15:12:28.922Z","decision":"block","reasons":["Phase p4 verify-phase evidence is stale (predates latest commit). Re-run: kata verify-phase p4 --issue=18"]}
+{"ts":"2026-02-25T15:12:35.745Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-25T15:16:09.122Z","decision":"block","reasons":["Phase p1 verify-phase evidence is stale (predates latest commit). Re-run: kata verify-phase p1 --issue=18","At least one new test function required (it/test/describe). See: arXiv 2402.13521"]}
+{"ts":"2026-02-25T15:16:19.323Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-25T15:33:54.590Z","decision":"block","reasons":["verify-phase has not been run. Run: kata verify-phase <phaseId> --issue=20","At least one new test function required (it/test/describe). See: arXiv 2402.13521"]}
+{"ts":"2026-02-25T15:35:57.882Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-25T16:47:34.609Z","decision":"block","reasons":["Phase p1 verify-phase evidence is stale (predates latest commit). Re-run: kata verify-phase p1 --issue=20"]}
+{"ts":"2026-02-25T16:47:42.344Z","decision":"block","reasons":["Phase p2 verify-phase evidence is stale (predates latest commit). Re-run: kata verify-phase p2 --issue=20"]}
+{"ts":"2026-02-25T16:47:50.052Z","decision":"block","reasons":["Phase p3 verify-phase evidence is stale (predates latest commit). Re-run: kata verify-phase p3 --issue=20"]}
+{"ts":"2026-02-25T16:47:57.367Z","decision":"block","reasons":["Phase p4 verify-phase evidence is stale (predates latest commit). Re-run: kata verify-phase p4 --issue=20"]}
+{"ts":"2026-02-25T16:48:05.267Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-25T16:50:59.050Z","decision":"block","reasons":["Phase p1 verify-phase evidence is stale (predates latest commit). Re-run: kata verify-phase p1 --issue=20","At least one new test function required (it/test/describe). See: arXiv 2402.13521"]}
+{"ts":"2026-02-25T16:51:08.144Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}

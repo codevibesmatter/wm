@@ -97,8 +97,33 @@ STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:3000/api/users
 
 ## Browser / UI Testing
 
+Use `agent-browser` for real browser automation (Chromium, installed globally):
+
+```bash
+# Open page and get interactive element refs
+agent-browser open http://localhost:3000
+agent-browser wait --load networkidle
+agent-browser snapshot -i
+
+# Check page text / structure
+agent-browser get text body
+agent-browser get title
+
+# Interact with elements
+agent-browser click @e1
+agent-browser fill @e2 "test value"
+
+# Screenshot for evidence
+agent-browser screenshot --annotate
+
+# Verify a route renders expected content
+agent-browser open http://localhost:3000/dashboard && agent-browser wait --load networkidle && agent-browser snapshot -i
+agent-browser close
 ```
-# Page content check
+
+Fallback (no JS rendering needed):
+```
+# Page content check via WebFetch
 WebFetch(url="http://localhost:3000/dashboard", prompt="Does this page show a user table?")
 
 # HTML inspection

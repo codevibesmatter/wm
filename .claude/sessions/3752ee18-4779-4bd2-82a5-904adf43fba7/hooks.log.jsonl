@@ -1,0 +1,22 @@
+{"hook":"session-start","decision":"context","source":"clear","ts":"2026-02-26T19:46:50.339Z"}
+{"hook":"user-prompt","decision":"context","suggested_mode":"implementation","ts":"2026-02-26T19:47:27.548Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-26T19:47:34.927Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Grep","ts":"2026-02-26T19:47:39.649Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-26T19:47:43.435Z"}
+{"hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode","ts":"2026-02-26T19:47:54.516Z"}
+{"hook":"user-prompt","decision":"context","suggested_mode":null,"ts":"2026-02-26T19:52:25.774Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-26T19:52:30.712Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-26T19:52:32.417Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-26T19:52:36.798Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-26T19:52:37.310Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-26T19:52:47.772Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-26T19:52:48.425Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-26T19:52:52.857Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-26T19:53:06.474Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-26T19:53:10.447Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-26T19:53:34.658Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-26T19:53:41.228Z"}
+{"hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode","ts":"2026-02-26T19:53:50.940Z"}
+{"hook":"user-prompt","decision":"context","suggested_mode":null,"ts":"2026-02-26T19:54:15.584Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Read","ts":"2026-02-26T19:54:20.778Z"}
+{"hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode","ts":"2026-02-26T19:54:26.941Z"}

@@ -1,0 +1,10 @@
+{
+  "scenarioId": "test-research",
+  "agentScore": 30,
+  "systemScore": 72,
+  "verdict": "FAIL_BOTH",
+  "judgedAt": "2026-02-21T18:30:01.506Z",
+  "transcriptPath": "/data/projects/kata-wm/eval-transcripts/research-mode-2026-02-21T17-38-53.jsonl",
+  "templatePath": "/data/projects/kata-wm/eval-fixtures/web-app/.claude/workflows/templates/research.md",
+  "reviewPath": "/data/projects/kata-wm/eval-reviews/test-research-2026-02-21T18-30-01.md"
+}

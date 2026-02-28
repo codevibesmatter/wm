@@ -1,0 +1,37 @@
+{"ts":"2026-02-24T21:06:26.048Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:06:31.344Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:06:35.686Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:08:56.424Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:09:01.581Z","hook":"mode-gate","decision":"allow","tool":"Glob"}
+{"ts":"2026-02-24T21:09:05.821Z","hook":"mode-gate","decision":"allow","tool":"Read"}
+{"ts":"2026-02-24T21:09:12.851Z","hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode"}
+{"ts":"2026-02-24T21:11:49.374Z","hook":"user-prompt","decision":"context","active_mode":"freeform"}
+{"ts":"2026-02-24T21:11:54.367Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:11:54.993Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:11:55.709Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:12:00.189Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:12:12.652Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:12:19.143Z","hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode"}
+{"ts":"2026-02-24T21:16:01.442Z","hook":"user-prompt","decision":"context","active_mode":"freeform"}
+{"ts":"2026-02-24T21:16:19.044Z","hook":"mode-gate","decision":"allow","tool":"Glob"}
+{"ts":"2026-02-24T21:16:24.361Z","hook":"mode-gate","decision":"allow","tool":"Read"}
+{"ts":"2026-02-24T21:16:37.118Z","hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode"}
+{"ts":"2026-02-24T21:17:16.595Z","hook":"user-prompt","decision":"context","active_mode":"freeform"}
+{"ts":"2026-02-24T21:17:20.213Z","hook":"mode-gate","decision":"allow","tool":"Read"}
+{"ts":"2026-02-24T21:17:42.589Z","hook":"mode-gate","decision":"allow","tool":"Edit"}
+{"ts":"2026-02-24T21:19:18.714Z","hook":"session-start","decision":"context","source":"compact"}
+{"ts":"2026-02-24T21:19:24.759Z","hook":"mode-gate","decision":"allow","tool":"Read"}
+{"ts":"2026-02-24T21:19:25.181Z","hook":"mode-gate","decision":"allow","tool":"Read"}
+{"ts":"2026-02-24T21:19:40.511Z","hook":"mode-gate","decision":"allow","tool":"Edit"}
+{"ts":"2026-02-24T21:19:45.087Z","hook":"mode-gate","decision":"allow","tool":"Edit"}
+{"ts":"2026-02-24T21:19:49.399Z","hook":"mode-gate","decision":"allow","tool":"Edit"}
+{"ts":"2026-02-24T21:19:53.202Z","hook":"mode-gate","decision":"allow","tool":"Edit"}
+{"ts":"2026-02-24T21:19:57.197Z","hook":"mode-gate","decision":"allow","tool":"Edit"}
+{"ts":"2026-02-24T21:20:03.292Z","hook":"mode-gate","decision":"allow","tool":"Edit"}
+{"ts":"2026-02-24T21:20:07.955Z","hook":"mode-gate","decision":"allow","tool":"Read"}
+{"ts":"2026-02-24T21:20:56.671Z","hook":"mode-gate","decision":"allow","tool":"Write"}
+{"ts":"2026-02-24T21:21:00.659Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:21:08.804Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:21:17.996Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:21:26.412Z","hook":"mode-gate","decision":"allow","tool":"Bash"}
+{"ts":"2026-02-24T21:21:36.216Z","hook":"stop-conditions","decision":"allow","note":"no stop conditions for mode"}

@@ -1,0 +1,82 @@
+{
+  "sessionId": "3be14fb3-3be2-45d8-b657-10472f313b88",
+  "workflowId": "GH#28",
+  "issueNumber": 28,
+  "issueType": "Unknown",
+  "issueTitle": "Executable verification plans in batteries templates",
+  "title": "Executable verification plans in batteries templates",
+  "githubType": "Unknown",
+  "sessionType": "implementation",
+  "currentMode": "implementation",
+  "previousMode": "planning",
+  "currentPhase": "p1",
+  "completedPhases": [],
+  "template": "implementation.md",
+  "phases": [
+    "p1",
+    "p2",
+    "p3",
+    "p4",
+    "p5"
+  ],
+  "modeHistory": [
+    {
+      "mode": "freeform",
+      "enteredAt": "2026-02-25T20:59:14.604Z"
+    },
+    {
+      "mode": "research",
+      "enteredAt": "2026-02-25T21:10:57.508Z"
+    },
+    {
+      "mode": "planning",
+      "enteredAt": "2026-02-25T21:44:36.472Z",
+      "exitedAt": "2026-02-26T01:03:19.487Z"
+    },
+    {
+      "mode": "implementation",
+      "enteredAt": "2026-02-25T22:36:04.705Z",
+      "exitedAt": "2026-02-26T00:54:09.311Z"
+    },
+    {
+      "mode": "planning",
+      "enteredAt": "2026-02-26T01:02:54.737Z",
+      "exitedAt": "2026-02-26T01:03:19.487Z"
+    },
+    {
+      "mode": "planning",
+      "enteredAt": "2026-02-26T01:03:23.905Z",
+      "exitedAt": "2026-02-26T01:40:28.292Z"
+    },
+    {
+      "mode": "implementation",
+      "enteredAt": "2026-02-26T01:40:33.939Z"
+    }
+  ],
+  "modeState": {
+    "freeform": {
+      "status": "active",
+      "enteredAt": "2026-02-25T20:59:14.604Z"
+    },
+    "research": {
+      "status": "active",
+      "enteredAt": "2026-02-25T21:10:57.508Z"
+    },
+    "planning": {
+      "status": "completed",
+      "enteredAt": "2026-02-26T01:03:23.905Z",
+      "exitedAt": "2026-02-26T01:40:28.292Z"
+    },
+    "implementation": {
+      "status": "active",
+      "enteredAt": "2026-02-26T01:40:33.939Z"
+    }
+  },
+  "updatedAt": "2026-02-26T01:40:33.939Z",
+  "workflowCompletedAt": "2026-02-26T01:40:28.292Z",
+  "beadsCreated": [],
+  "editedFiles": [],
+  "todosWritten": false,
+  "specPath": "/data/projects/kata-wm/planning/specs/28-verify-mode.md",
+  "workflowDir": "/data/projects/kata-wm/.claude/sessions/3be14fb3-3be2-45d8-b657-10472f313b88/workflow"
+}

@@ -1,0 +1,16 @@
+{"ts":"2026-02-26T20:02:05.529Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T20:36:15.655Z","decision":"block","reasons":["Uncommitted changes in tracked files"]}
+{"ts":"2026-02-26T20:37:12.904Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T20:37:51.199Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T20:45:16.696Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T20:45:28.030Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T21:41:18.619Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T21:56:15.335Z","decision":"block","reasons":["Uncommitted changes in tracked files"]}
+{"ts":"2026-02-26T21:56:27.187Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T22:03:25.910Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T22:08:19.168Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T22:14:41.859Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T22:19:37.920Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T22:22:18.128Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T22:26:46.681Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-26T23:50:05.359Z","decision":"allow","reasons":[],"note":"all conditions met"}

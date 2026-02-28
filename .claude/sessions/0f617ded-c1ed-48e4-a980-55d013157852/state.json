@@ -1,0 +1,47 @@
+{
+  "sessionId": "0f617ded-c1ed-48e4-a980-55d013157852",
+  "workflowId": "TK-0f61-0225",
+  "sessionType": "task",
+  "currentMode": "task",
+  "currentPhase": "p0",
+  "completedPhases": [],
+  "template": "task.md",
+  "phases": [
+    "p0",
+    "p1",
+    "p2"
+  ],
+  "modeHistory": [
+    {
+      "mode": "freeform",
+      "enteredAt": "2026-02-25T16:59:53.864Z"
+    },
+    {
+      "mode": "task",
+      "enteredAt": "2026-02-25T17:02:25.851Z"
+    },
+    {
+      "mode": "freeform",
+      "enteredAt": "2026-02-25T17:23:27.879Z"
+    },
+    {
+      "mode": "task",
+      "enteredAt": "2026-02-25T17:29:45.192Z"
+    }
+  ],
+  "modeState": {
+    "freeform": {
+      "status": "active",
+      "enteredAt": "2026-02-25T17:23:27.879Z"
+    },
+    "task": {
+      "status": "active",
+      "enteredAt": "2026-02-25T17:29:45.192Z"
+    }
+  },
+  "updatedAt": "2026-02-25T17:29:45.192Z",
+  "beadsCreated": [],
+  "editedFiles": [],
+  "todosWritten": false,
+  "workflowDir": "/data/projects/kata-wm/.claude/sessions/0f617ded-c1ed-48e4-a980-55d013157852/workflow"
+}

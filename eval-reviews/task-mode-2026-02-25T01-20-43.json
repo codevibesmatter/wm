@@ -1,0 +1,11 @@
+{
+  "scenarioId": "task-mode",
+  "agentScore": 83,
+  "systemScore": 82,
+  "verdict": "PASS",
+  "provider": "claude",
+  "judgedAt": "2026-02-25T01:20:43.522Z",
+  "transcriptPath": "/data/projects/kata-wm/eval-transcripts/task-mode-2026-02-25T01-16-23.jsonl",
+  "templatePath": "/data/projects/kata-wm/eval-projects/task-mode-2026-02-25T01-16-23/.claude/workflows/templates/task.md",
+  "reviewPath": "/data/projects/kata-wm/eval-reviews/task-mode-2026-02-25T01-20-43.md"
+}

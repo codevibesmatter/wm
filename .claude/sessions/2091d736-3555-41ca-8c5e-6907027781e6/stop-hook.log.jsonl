@@ -1,0 +1,6 @@
+{"ts":"2026-02-24T21:23:45.197Z","decision":"allow","reasons":[],"note":"no stop conditions for mode"}
+{"ts":"2026-02-24T22:09:29.137Z","decision":"block","reasons":["Uncommitted changes in tracked files"]}
+{"ts":"2026-02-24T22:10:20.979Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-24T22:11:11.750Z","decision":"allow","reasons":[],"note":"all conditions met"}
+{"ts":"2026-02-24T22:26:17.918Z","decision":"block","reasons":["verify-phase has not been run. Run: kata verify-phase <phaseId> --issue=16"]}
+{"ts":"2026-02-24T22:26:30.194Z","decision":"allow","reasons":[],"note":"all conditions met"}

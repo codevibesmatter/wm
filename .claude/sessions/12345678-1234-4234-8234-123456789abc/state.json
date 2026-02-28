@@ -1,0 +1,13 @@
+{
+  "sessionId": "12345678-1234-4234-8234-123456789abc",
+  "workflowId": "",
+  "sessionType": "default",
+  "currentMode": "default",
+  "completedPhases": [],
+  "phases": [],
+  "modeHistory": [],
+  "modeState": {},
+  "beadsCreated": [],
+  "editedFiles": [],
+  "todosWritten": false
+}

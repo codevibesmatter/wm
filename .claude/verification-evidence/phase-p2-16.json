@@ -1,0 +1,39 @@
+{
+  "phaseId": "p2",
+  "issueNumber": 16,
+  "timestamp": "2026-02-24T22:26:22.773Z",
+  "steps": [
+    {
+      "name": "build",
+      "passed": true,
+      "skipped": true
+    },
+    {
+      "name": "typecheck",
+      "passed": true,
+      "skipped": true
+    },
+    {
+      "name": "tests",
+      "passed": true,
+      "output": "TAP version 13\n# Subtest: /data/projects/kata-wm/dist/testing/index.js\nok 1 - /data/projects/kata-wm/dist/testing/index.js\n  ---\n  duration_ms: 33.188702\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 37.400356"
+    },
+    {
+      "name": "smoke",
+      "passed": true,
+      "skipped": true
+    },
+    {
+      "name": "delta",
+      "passed": true,
+      "output": "Assertion count OK (before: 0, after: 45)"
+    },
+    {
+      "name": "micro-review",
+      "passed": true,
+      "skipped": true,
+      "output": "No code_reviewer configured in wm.yaml — micro-review skipped"
+    }
+  ],
+  "overallPassed": true
+}

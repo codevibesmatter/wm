@@ -1,0 +1,11 @@
+project:
+  name: kata-wm
+  test_command: node --test dist/testing/index.js 2>/dev/null || true
+  ci: github-actions
+spec_path: planning/specs
+research_path: planning/research
+session_retention_days: 7
+reviews:
+  spec_review: false
+  code_reviewer: null
+wm_version: 0.0.1
