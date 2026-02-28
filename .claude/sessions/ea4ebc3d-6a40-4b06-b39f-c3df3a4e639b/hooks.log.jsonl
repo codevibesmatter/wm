@@ -400,3 +400,7 @@
 {"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:34:14.450Z"}
 {"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:34:22.278Z"}
 {"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:34:25.979Z"}
+{"hook":"mode-gate","decision":"allow","tool":"TaskOutput","ts":"2026-02-28T00:34:28.869Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:34:33.431Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:34:36.848Z"}
+{"hook":"mode-gate","decision":"allow","tool":"Bash","ts":"2026-02-28T00:34:41.331Z"}
