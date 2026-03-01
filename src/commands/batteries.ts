@@ -133,6 +133,10 @@ export async function batteries(args: string[]): Promise<void> {
   if (result.updated.length > 0) {
     process.stdout.write(`\nUpdated (overwritten):\n`)
     for (const f of result.updated) process.stdout.write(`  ${f}\n`)
+    if (result.backupDir) {
+      const rel = result.backupDir.replace(projectRoot + '/', '')
+      process.stdout.write(`\nPre-update backups saved to: ${rel}/\n`)
+    }
   }
   if (hooksRefreshed) {
     process.stdout.write(`\nHooks refreshed → .claude/settings.json\n`)

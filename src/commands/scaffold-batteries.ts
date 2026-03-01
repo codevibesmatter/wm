@@ -3,7 +3,7 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { dirname } from 'node:path'
-import { getPackageRoot, getProjectTemplatesDir, getProjectInterviewsPath, getProjectSubphasePatternsPath, getProjectVerificationToolsPath } from '../session/lookup.js'
+import { getPackageRoot, getProjectTemplatesDir, getProjectInterviewsPath, getProjectSubphasePatternsPath, getProjectVerificationToolsPath, getKataDir } from '../session/lookup.js'
 import { getKataConfigPath } from '../config/kata-config.js'
 
 export interface BatteriesResult {
@@ -17,11 +17,13 @@ export interface BatteriesResult {
   kataConfig: string[]
   skipped: string[]
   updated: string[]
+  backupDir?: string
 }
 
 /**
  * Copy all files from srcDir into destDir (one level deep).
  * When update is true, overwrites existing files and reports them as updated.
+ * If backupDir is provided, backs up existing files there before overwriting.
  * Otherwise skips existing files.
  */
 function copyDirectory(
@@ -31,6 +33,7 @@ function copyDirectory(
   skipped: string[],
   updated: string[],
   update = false,
+  backupDir?: string,
 ): void {
   if (!existsSync(srcDir)) return
   mkdirSync(destDir, { recursive: true })
@@ -40,6 +43,10 @@ function copyDirectory(
     const dest = join(destDir, file)
     if (existsSync(dest)) {
       if (update) {
+        if (backupDir) {
+          mkdirSync(backupDir, { recursive: true })
+          copyFileSync(dest, join(backupDir, file))
+        }
         copyFileSync(src, dest)
         updated.push(file)
       } else {
@@ -50,6 +57,14 @@ function copyDirectory(
       copied.push(file)
     }
   }
+}
+
+/**
+ * Back up a single file to backupDir before overwriting, if backupDir is set.
+ */
+function backupFile(filePath: string, backupDir: string, filename: string): void {
+  mkdirSync(backupDir, { recursive: true })
+  copyFileSync(filePath, join(backupDir, filename))
 }
 
 /**
@@ -69,6 +84,18 @@ function copyDirectory(
  */
 export function scaffoldBatteries(projectRoot: string, update = false): BatteriesResult {
   const batteryRoot = join(getPackageRoot(), 'batteries')
+
+  // Compute a timestamped backup dir under the kata config dir (only used on --update)
+  let backupRoot: string | undefined
+  if (update) {
+    const timestamp = new Date().toISOString().replace(/:/g, '-').slice(0, 19)
+    const kd = getKataDir(projectRoot)
+    const configBase = kd === '.kata'
+      ? join(projectRoot, '.kata')
+      : join(projectRoot, '.claude', 'workflows')
+    backupRoot = join(configBase, 'batteries-backup', timestamp)
+  }
+
   const result: BatteriesResult = {
     templates: [],
     agents: [],
@@ -80,6 +107,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
     kataConfig: [],
     skipped: [],
     updated: [],
+    backupDir: backupRoot,
   }
 
   // kata.yaml → project config dir
@@ -88,6 +116,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
   if (existsSync(kataYamlSrc)) {
     if (existsSync(kataYamlDest)) {
       if (update) {
+        if (backupRoot) backupFile(kataYamlDest, backupRoot, 'kata.yaml')
         copyFileSync(kataYamlSrc, kataYamlDest)
         result.kataConfig.push('kata.yaml')
         result.updated.push('kata.yaml')
@@ -109,6 +138,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
     result.skipped,
     result.updated,
     update,
+    backupRoot ? join(backupRoot, 'templates') : undefined,
   )
 
   // Agent definitions → .claude/agents/
@@ -119,6 +149,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
     result.skipped,
     result.updated,
     update,
+    backupRoot ? join(backupRoot, 'agents') : undefined,
   )
 
   // Spec templates → planning/spec-templates/
@@ -129,6 +160,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
     result.skipped,
     result.updated,
     update,
+    backupRoot ? join(backupRoot, 'spec-templates') : undefined,
   )
 
   // GitHub issue templates → .github/ISSUE_TEMPLATE/
@@ -139,6 +171,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
     result.skipped,
     result.updated,
     update,
+    backupRoot ? join(backupRoot, 'ISSUE_TEMPLATE') : undefined,
   )
 
   // labels.json → .github/wm-labels.json (used by onboard mode to create labels)
@@ -147,6 +180,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
   if (existsSync(labelsSrc)) {
     if (existsSync(labelsDest)) {
       if (update) {
+        if (backupRoot) backupFile(labelsDest, backupRoot, 'wm-labels.json')
         copyFileSync(labelsSrc, labelsDest)
         result.updated.push('wm-labels.json')
       } else {
@@ -165,6 +199,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
   if (existsSync(interviewsSrc)) {
     if (existsSync(interviewsDest)) {
       if (update) {
+        if (backupRoot) backupFile(interviewsDest, backupRoot, 'interviews.yaml')
         copyFileSync(interviewsSrc, interviewsDest)
         result.updated.push('interviews.yaml')
       } else {
@@ -184,6 +219,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
   if (existsSync(subphaseSrc)) {
     if (existsSync(subphaseDest)) {
       if (update) {
+        if (backupRoot) backupFile(subphaseDest, backupRoot, 'subphase-patterns.yaml')
         copyFileSync(subphaseSrc, subphaseDest)
         result.updated.push('subphase-patterns.yaml')
       } else {
@@ -202,6 +238,7 @@ export function scaffoldBatteries(projectRoot: string, update = false): Batterie
   if (existsSync(vtSrc)) {
     if (existsSync(vtDest)) {
       if (update) {
+        if (backupRoot) backupFile(vtDest, backupRoot, 'verification-tools.md')
         copyFileSync(vtSrc, vtDest)
         result.updated.push('verification-tools.md')
       } else {
