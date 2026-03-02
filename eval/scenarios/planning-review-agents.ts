@@ -4,8 +4,12 @@
  * Tests that the P3 spec review step spawns all three reviewers in a single parallel
  * message (run_in_background=true) rather than running them sequentially.
  *
- * Uses tanstack-start fixture with fixtureSetup to enable both external spec reviewers
- * alongside the built-in review-agent in kata.yaml.
+ * Uses tanstack-start fixture with:
+ * - A pre-seeded spec at planning/specs/200-dark-mode.md (status: needs-review)
+ * - spec_reviewers: [gemini, codex] added to kata.yaml
+ *
+ * The agent picks up the spec at needs-review status and runs P3 directly,
+ * bypassing P0-P2 interview/research/writing phases.
  *
  * Asserts:
  * 1. Standard planning workflow checks (mode, commit, clean tree, can-exit, spec approved)
@@ -33,8 +37,9 @@ export const planningReviewAgentsScenario: EvalScenario = {
     "sed -i '/^  spec_reviewers:/a\\    - gemini' .claude/workflows/kata.yaml",
   ],
   prompt:
-    'Plan a dark mode toggle feature for this app. ' +
-    'Research the codebase, write a spec, get it reviewed, and produce an approved spec committed to planning/specs/.',
+    'The dark mode spec at planning/specs/200-dark-mode.md has status: needs-review. ' +
+    'Enter planning mode and run the P3 spec review gate on it. ' +
+    'The issue number is 200.',
   timeoutMs: 20 * 60 * 1000,
   checkpoints: [
     ...planningPresets(),
