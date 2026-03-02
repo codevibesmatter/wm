@@ -30,7 +30,8 @@ export const planningReviewAgentsScenario: EvalScenario = {
   name: 'Planning: review-agent + gemini + codex spawn simultaneously in P3',
   fixture: 'tanstack-start',
   fixtureSetup: [
-    // Add spec_review: true and spec_reviewers list to the reviews block in kata.yaml
+    // batteries --update comments out the reviews block; uncomment it and add spec reviewers
+    "sed -i 's/^# reviews:/reviews:/' .claude/workflows/kata.yaml",
     "sed -i '/^reviews:/a\\  spec_review: true' .claude/workflows/kata.yaml",
     "sed -i '/^  spec_review: true/a\\  spec_reviewers:' .claude/workflows/kata.yaml",
     "sed -i '/^  spec_reviewers:/a\\    - codex' .claude/workflows/kata.yaml",
