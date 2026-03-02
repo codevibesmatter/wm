@@ -517,24 +517,31 @@ phases:
           gate: true
           threshold: 75
         instruction: |
-          Run all reviewers sequentially and print each result:
+          **SPAWN all reviewers simultaneously in a single message** (do NOT run them sequentially):
 
-          1. Spawn review-agent:
-          Task(subagent_type="review-agent", prompt="
-            Review the spec at planning/specs/{spec-file}.md for quality and completeness.
-            Check: behaviors have ID/Trigger/Expected/Verify, no placeholder text,
-            phases cover all behaviors, each phase has test_cases, non-goals present.
-            Return: verdict (PASS / GAPS_FOUND) with specific issues listed by section.
-          ")
+          In ONE message, launch all reviewers in parallel:
 
-          2. For each provider in kata.yaml reviews.spec_reviewers (or reviews.spec_reviewer
-             if using the singular form), run one at a time:
-          ```bash
-          kata review --prompt=spec-review --context=spec --output=reviews/ --provider=<name>
-          ```
-          Read kata.yaml to find configured reviewers. Skip if none configured.
+          - Reviewer 1 — review-agent:
+            Task(subagent_type="review-agent", prompt="
+              Review the spec at planning/specs/{spec-file}.md for quality and completeness.
+              Check: behaviors have ID/Trigger/Expected/Verify, no placeholder text,
+              phases cover all behaviors, each phase has test_cases, non-goals present.
+              Return: verdict (PASS / GAPS_FOUND) with specific issues listed by section.
+            ", run_in_background=true)
 
-          Print each result as it completes. Use the external provider score for the gate
+          - Reviewer 2..N — for each provider in kata.yaml reviews.spec_reviewers, spawn a Bash task:
+            Task(subagent_type="general-purpose", prompt="
+              Run: kata review --prompt=spec-review --context=spec --output=reviews/ --provider=<name>
+              Print the full output including score and issues found.
+            ", run_in_background=true)
+
+          Read kata.yaml to find configured providers. If none configured, only spawn the review-agent.
+
+          Then wait for ALL task IDs before reading results:
+          TaskOutput(task_id=<review-agent-id>, block=true)
+          TaskOutput(task_id=<provider-id>, block=true)  # one per provider
+
+          Print each result. Use the external provider score for the gate
           (if no external provider, use review-agent verdict: PASS = proceed, GAPS_FOUND = fix loop).
 
           **Check result:**
